@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ma Salle — Suivi Fitness</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #1a1d24;
+    --card2: #21252e;
+    --line: #2c313c;
+    --text: #e8eaed;
+    --muted: #9aa0ac;
+    --accent: #4f8cff;
+    --push: #ff7a59;
+    --pull: #59c2ff;
+    --legs: #7bd88f;
+    --upper: #a78bfa;
+    --bras: #ff6fae;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    padding-bottom: 90px;
+  }
+  header {
+    padding: 22px 18px 14px;
+    position: sticky; top: 0;
+    background: linear-gradient(180deg, var(--bg) 70%, transparent);
+    z-index: 10;
+  }
+  header h1 { font-size: 22px; font-weight: 700; }
+  header p { color: var(--muted); font-size: 13px; }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 0 18px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .card h2 { font-size: 15px; margin-bottom: 12px; display:flex; align-items:center; gap:8px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  input, select, button, textarea {
+    font: inherit;
+    background: var(--card2);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    outline: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  input[type=number] { width: 90px; }
+  input[type=date] { color-scheme: dark; }
+  .grow { flex: 1; min-width: 80px; }
+  button {
+    cursor: pointer;
+    background: var(--accent);
+    border: none;
+    font-weight: 600;
+    transition: filter .15s;
+  }
+  button:hover { filter: brightness(1.1); }
+  button.ghost { background: var(--card2); border: 1px solid var(--line); font-weight: 500; }
+  button.danger { background: transparent; color: #ff6b6b; border: 1px solid #3a2a2a; padding: 6px 10px; }
+  button.small { padding: 6px 12px; font-size: 13px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .big { font-size: 32px; font-weight: 700; }
+  .stat-row { display:flex; justify-content:space-between; align-items:flex-end; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  .pill { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .pill.Push { background: rgba(255,122,89,.15); color: var(--push); }
+  .pill.Pull { background: rgba(89,194,255,.15); color: var(--pull); }
+  .pill.Legs { background: rgba(123,216,143,.15); color: var(--legs); }
+  .pill.Upper { background: rgba(167,139,250,.15); color: var(--upper); }
+  .pill.Bras { background: rgba(255,111,174,.15); color: var(--bras); }
+  nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--card); border-top: 1px solid var(--line);
+    display: flex; justify-content: space-around;
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    z-index: 20;
+  }
+  nav button {
+    background: none; border: none; color: var(--muted);
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    font-size: 11px; font-weight: 500; padding: 4px 14px;
+  }
+  nav button.active { color: var(--accent); }
+  nav button .ico { font-size: 20px; }
+  .tab { display: none; }
+  .tab.active { display: block; }
+  .empty { text-align:center; color: var(--muted); padding: 24px 0; font-size: 14px; }
+  svg text { fill: var(--muted); font-size: 11px; }
+  .exo-block { border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px; background:var(--card2); }
+  .exo-block h3 { font-size:14px; margin-bottom:8px; }
+  .set-line { display:flex; gap:6px; align-items:center; margin-bottom:6px; }
+  .set-line .idx { color:var(--muted); width:18px; font-size:13px; }
+  .diff-scale { display:flex; gap:5px; }
+  .diff-dot {
+    flex:1; padding:8px 0; font-size:13px; font-weight:600;
+    background:var(--card); border:1px solid var(--line); color:var(--muted); border-radius:8px;
+  }
+  .diff-dot.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .last-hint {
+    background:rgba(79,140,255,.1); border:1px solid rgba(79,140,255,.25);
+    color:var(--text); font-size:12.5px; padding:7px 10px; border-radius:9px; margin-bottom:10px;
+  }
+  .session-item { border-bottom:1px solid var(--line); padding:12px 0; cursor:pointer; }
+  .session-item:last-child { border-bottom:none; }
+  label.lbl { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
+  .seg { display:flex; gap:6px; flex-wrap:wrap; }
+  .seg button { flex:1 1 28%; background:var(--card2); border:1px solid var(--line); color:var(--muted); font-weight:600; padding:9px 6px; }
+  .seg button.on { color:#fff; }
+  .seg button.on[data-t=Push]{ background:var(--push); border-color:var(--push);}
+  .seg button.on[data-t=Pull]{ background:var(--pull); border-color:var(--pull);}
+  .seg button.on[data-t=Legs]{ background:var(--legs); border-color:var(--legs);}
+  .seg button.on[data-t=Upper]{ background:var(--upper); border-color:var(--upper);}
+  .seg button.on[data-t=Bras]{ background:var(--bras); border-color:var(--bras);}
+  .flex-between { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  details summary { cursor:pointer; color:var(--muted); font-size:13px; }
+  /* --- compte / sync --- */
+  .acct { display:flex; align-items:center; gap:8px; margin-top:8px; font-size:12px; color:var(--muted); }
+  .sync-badge { padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; border:1px solid var(--line); }
+  .sync-badge.ok { color:var(--legs); border-color:rgba(123,216,143,.4); }
+  .sync-badge.saving { color:var(--pull); border-color:rgba(89,194,255,.4); }
+  .sync-badge.err { color:#ff6b6b; border-color:#5a2a2a; }
+  .sync-badge.local { color:var(--muted); }
+  .link-btn { background:none; border:none; color:var(--accent); cursor:pointer; font-weight:600; padding:0; font-size:12px; }
+  /* --- écran de connexion --- */
+  #authScreen {
+    position:fixed; inset:0; z-index:100; background:var(--bg);
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  #authScreen .box { width:100%; max-width:360px; }
+  #authScreen h1 { font-size:24px; margin-bottom:4px; }
+  #authScreen p.sub { color:var(--muted); font-size:13px; margin-bottom:20px; }
+  #authScreen input { width:100%; margin-bottom:10px; }
+  #authScreen button.primary { width:100%; margin-bottom:8px; }
+  #authMsg { font-size:13px; margin-top:8px; min-height:18px; }
+  #authMsg.err { color:#ff6b6b; }
+  #authMsg.ok { color:var(--legs); }
+</style>
+</head>
+<body>
+
+<!-- Écran de connexion (affiché seulement si le cloud est configuré et non connecté) -->
+<div id="authScreen" style="display:none">
+  <div class="box">
+    <h1>💪 Ma Salle</h1>
+    <p class="sub">Connecte-toi pour retrouver tes données sur tous tes appareils.</p>
+    <input type="email" id="authEmail" placeholder="Adresse e-mail" autocomplete="email">
+    <input type="password" id="authPass" placeholder="Mot de passe" autocomplete="current-password">
+    <button class="primary" onclick="doSignIn()">Se connecter</button>
+    <button class="primary ghost" onclick="doSignUp()">Créer un compte</button>
+    <div id="authMsg"></div>
+  </div>
+</div>
+
+<header>
+  <div class="wrap">
+    <h1>💪 Ma Salle</h1>
+    <p>Suivi Push · Pull · Legs & poids de corps</p>
+    <div class="acct" id="acctBar" style="display:none">
+      <span class="sync-badge local" id="syncBadge">Local</span>
+      <span id="acctEmail"></span>
+      <button class="link-btn" id="logoutBtn" onclick="doSignOut()" style="display:none">Déconnexion</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ACCUEIL -->
+  <section id="tab-home" class="tab active">
+    <div class="card">
+      <div class="stat-row">
+        <div>
+          <div class="muted">Poids actuel</div>
+          <div class="big" id="curWeight">—</div>
+        </div>
+        <div style="text-align:right">
+          <div class="muted">Variation</div>
+          <div id="weightDelta" style="font-size:18px;font-weight:600">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📅 Cette semaine</h2>
+      <div id="weekStats" class="row" style="gap:18px"></div>
+    </div>
+
+    <div class="card">
+      <h2>🕒 Dernières séances</h2>
+      <div id="recentSessions"></div>
+    </div>
+  </section>
+
+  <!-- POIDS -->
+  <section id="tab-weight" class="tab">
+    <div class="card">
+      <h2>⚖️ Ajouter une pesée</h2>
+      <div class="row">
+        <input type="date" id="wDate" class="grow">
+        <input type="number" id="wValue" placeholder="kg" step="0.1" min="0">
+        <button onclick="addWeight()">Ajouter</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Progression du poids</h2>
+      <div id="weightChart"></div>
+    </div>
+    <div class="card">
+      <h2>Historique</h2>
+      <div id="weightList"></div>
+    </div>
+  </section>
+
+  <!-- SÉANCE -->
+  <section id="tab-session" class="tab">
+    <div class="card">
+      <h2>➕ Nouvelle séance</h2>
+      <label class="lbl">Type</label>
+      <div class="seg" id="typeSeg" style="margin-bottom:12px"></div>
+      <label class="lbl">Date</label>
+      <input type="date" id="sDate" style="margin-bottom:14px;width:100%">
+
+      <div id="exoContainer"></div>
+
+      <div class="row" style="margin-top:6px">
+        <select id="exoPick" class="grow"></select>
+        <button class="ghost small" onclick="addExoFromPick()">+ Exercice</button>
+      </div>
+      <div style="text-align:right;margin-top:6px">
+        <button class="ghost small" onclick="toggleManager()" id="mgrBtn" style="font-size:12px;padding:4px 10px">⚙️ Gérer les exercices</button>
+      </div>
+      <div id="exoManager" style="display:none"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="grow" onclick="saveSession()">💾 Enregistrer la séance</button>
+      </div>
+      <p class="muted" id="sessionMsg" style="margin-top:8px"></p>
+    </div>
+  </section>
+
+  <!-- PROGRÈS -->
+  <section id="tab-progress" class="tab">
+    <div class="card">
+      <h2>📈 Progression par exercice</h2>
+      <select id="progPick" class="grow" style="width:100%;margin-bottom:14px" onchange="renderProgress()"></select>
+      <div id="progChart"></div>
+      <div id="progStats" class="row" style="gap:18px;margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <h2>Volume hebdomadaire</h2>
+      <div class="muted" style="margin-bottom:10px">Tonnage total (séries × reps × charge)</div>
+      <div id="volChart"></div>
+    </div>
+  </section>
+
+  <!-- HISTORIQUE -->
+  <section id="tab-log" class="tab">
+    <div class="card">
+      <h2>📚 Toutes les séances</h2>
+      <div id="allSessions"></div>
+    </div>
+    <div class="card">
+      <details>
+        <summary>Données & sauvegarde</summary>
+        <div style="margin-top:12px" class="row">
+          <button class="ghost small" onclick="exportData()">⬇ Exporter (JSON)</button>
+          <button class="ghost small" onclick="document.getElementById('importFile').click()">⬆ Importer</button>
+          <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
+        </div>
+        <p class="muted" style="margin-top:8px">Tes données sont stockées uniquement dans ce navigateur. Pense à exporter de temps en temps.</p>
+      </details>
+    </div>
+  </section>
+
+</div>
+
+<nav>
+  <button class="active" data-tab="home" onclick="showTab('home')"><span class="ico">🏠</span>Accueil</button>
+  <button data-tab="weight" onclick="showTab('weight')"><span class="ico">⚖️</span>Poids</button>
+  <button data-tab="session" onclick="showTab('session')"><span class="ico">➕</span>Séance</button>
+  <button data-tab="progress" onclick="showTab('progress')"><span class="ico">📈</span>Progrès</button>
+  <button data-tab="log" onclick="showTab('log')"><span class="ico">📚</span>Journal</button>
+</nav>
+
+<script>
+/* ============ DONNÉES ============ */
+const DB_KEY = 'masalle_v1';
+const DEFAULT_EXOS = {
+  Push: ['Développé couché', 'Développé incliné', 'Développé militaire', 'Dips', 'Élévations latérales', 'Extension triceps'],
+  Pull: ['Tractions', 'Rowing barre', 'Tirage horizontal', 'Tirage vertical', 'Curl biceps', 'Face pull'],
+  Legs: ['Squat', 'Presse à cuisses', 'Soulevé de terre', 'Fentes', 'Leg curl', 'Mollets debout'],
+  Upper: ['Développé couché', 'Tractions', 'Développé militaire', 'Rowing barre', 'Dips', 'Curl biceps', 'Extension triceps', 'Élévations latérales'],
+  Bras: ['Curl biceps', 'Curl marteau', 'Curl pupitre', 'Extension triceps', 'Dips', 'Développé militaire', 'Élévations latérales', 'Face pull', 'Oiseau (arrière épaule)'],
+  Abdos: ['Crunch', 'Relevé de jambes', 'Gainage (planche)', 'Russian twist', 'Roue abdominale', 'Crunch à la poulie', 'Relevé de genoux suspendu']
+};
+const TYPES = ['Push','Pull','Legs','Upper','Bras'];   // types de séance (boutons + couleurs)
+const BUCKETS = [...TYPES, 'Abdos'];                    // + Abdos, dispo dans toutes les séances
+function emptyCustom() { const o={}; BUCKETS.forEach(t=>o[t]=[]); return o; }
+
+/* ============ CONFIGURATION CLOUD ============
+   Pour activer la synchronisation entre appareils, colle ici l'URL et la clé
+   "anon public" de ton projet Supabase (voir le guide SETUP.md).
+   Tant que ces deux valeurs sont vides, l'app fonctionne en mode local (sur cet appareil). */
+const SUPABASE_URL = 'https://vkjkhdeqppmgwiszxdcn.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_NtTzuiT_8jxD09FlIXithw_EmzM0kzT';
+
+// remet en forme un objet de données (compat anciens formats + champs manquants)
+function ensureShape(d) {
+  d = d || {};
+  if (!Array.isArray(d.weights)) d.weights = [];
+  if (!Array.isArray(d.sessions)) d.sessions = [];
+  if (!d.customExos) d.customExos = {};
+  BUCKETS.forEach(t => { if (!d.customExos[t]) d.customExos[t] = []; });
+  if (!d.hidden) d.hidden = {};
+  return d;
+}
+let db = ensureShape(loadLocal());
+
+function loadLocal() {
+  try { const raw = localStorage.getItem(DB_KEY); if (raw) return JSON.parse(raw); } catch(e) {}
+  return null;
+}
+function save() {
+  localStorage.setItem(DB_KEY, JSON.stringify(db)); // toujours en local (instantané, hors-ligne)
+  scheduleCloudSave();                              // + push vers le cloud si connecté
+}
+// liste des exercices d'un "bucket" (un type de séance, ou 'Abdos'), masqués exclus
+function exosFor(bucket) {
+  const hidden = (db.hidden && db.hidden[bucket]) || [];
+  return [...(DEFAULT_EXOS[bucket]||[]), ...(db.customExos[bucket]||[])].filter(e => !hidden.includes(e));
+}
+function allExoNames() {
+  const s = new Set();
+  BUCKETS.forEach(t => exosFor(t).forEach(e => s.add(e)));
+  db.sessions.forEach(ss => ss.exercises.forEach(e => s.add(e.name)));
+  return [...s].sort();
+}
+function today() { return new Date().toISOString().slice(0,10); }
+function fmtDate(d) {
+  return new Date(d+'T00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
+}
+// lundi de la semaine d'une date (clé de regroupement hebdo)
+function mondayKey(dateStr) {
+  const d = new Date(dateStr+'T00:00');
+  const m = new Date(d); m.setDate(d.getDate() - ((d.getDay()+6)%7));
+  return m.toISOString().slice(0,10);
+}
+function weekLabel(mondayStr) {
+  const m = new Date(mondayStr+'T00:00'), sun = new Date(m); sun.setDate(m.getDate()+6);
+  const opt = {day:'numeric',month:'short'};
+  return 'Semaine du ' + m.toLocaleDateString('fr-FR',opt) + ' au ' + sun.toLocaleDateString('fr-FR',opt);
+}
+
+/* ============ NAVIGATION ============ */
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab===name));
+  window.scrollTo(0,0);
+  if (name==='home') renderHome();
+  if (name==='weight') renderWeight();
+  if (name==='progress') renderProgressTab();
+  if (name==='log') renderLog();
+}
+
+/* ============ POIDS ============ */
+function addWeight() {
+  const date = document.getElementById('wDate').value;
+  const val = parseFloat(document.getElementById('wValue').value);
+  if (!date || isNaN(val)) return;
+  db.weights = db.weights.filter(w => w.date !== date); // une pesée par jour
+  db.weights.push({date, value: val});
+  db.weights.sort((a,b)=>a.date.localeCompare(b.date));
+  save();
+  document.getElementById('wValue').value='';
+  renderWeight(); renderHome();
+}
+function delWeight(date) {
+  db.weights = db.weights.filter(w => w.date!==date);
+  save(); renderWeight(); renderHome();
+}
+function renderWeight() {
+  document.getElementById('wDate').value = document.getElementById('wDate').value || today();
+  const list = document.getElementById('weightList');
+  if (!db.weights.length) { list.innerHTML = '<div class="empty">Aucune pesée enregistrée.</div>'; }
+  else {
+    const rows = [...db.weights].reverse().map(w =>
+      `<tr><td>${fmtDate(w.date)}</td><td><b>${w.value} kg</b></td>
+       <td style="text-align:right"><button class="danger small" onclick="delWeight('${w.date}')">✕</button></td></tr>`).join('');
+    list.innerHTML = `<table>${rows}</table>`;
+  }
+  drawLineChart('weightChart', db.weights.map(w=>({x:w.date, y:w.value})), 'kg', '#4f8cff');
+}
+
+/* ============ SÉANCE (création) ============ */
+let curType = 'Push';
+let curExos = []; // {name, sets:[{reps,weight}]}
+
+function renderTypeSeg() {
+  document.getElementById('typeSeg').innerHTML =
+    TYPES.map(t=>`<button data-t="${t}" onclick="pickType('${t}')">${t}</button>`).join('');
+}
+function pickType(t) {
+  curType = t;
+  document.querySelectorAll('#typeSeg button').forEach(b => b.classList.toggle('on', b.dataset.t===t));
+  refreshExoPick();
+  if (document.getElementById('exoManager').style.display !== 'none') renderManager();
+}
+function refreshExoPick() {
+  const sel = document.getElementById('exoPick');
+  sel.innerHTML =
+    `<optgroup label="${curType}">` + exosFor(curType).map(e=>`<option>${e}</option>`).join('') + '</optgroup>'
+    + '<optgroup label="Abdos (dispo partout)">' + exosFor('Abdos').map(e=>`<option>${e}</option>`).join('') + '</optgroup>'
+    + '<optgroup label="—">'
+    + `<option value="__new">+ Nouvel exercice (${curType})…</option>`
+    + '<option value="__newabs">+ Nouvel abdo…</option></optgroup>';
+}
+function addExoFromPick() {
+  let name = document.getElementById('exoPick').value;
+  if (name === '__new' || name === '__newabs') {
+    const bucket = name === '__newabs' ? 'Abdos' : curType;
+    name = prompt('Nom du nouvel exercice :');
+    if (!name) return;
+    name = name.trim();
+    if (!exosFor(bucket).includes(name)) { db.customExos[bucket].push(name); save(); refreshExoPick(); }
+  }
+  curExos.push({ name, sets: [{reps:'', weight:''}], note: '', difficulty: '' });
+  renderExoBuilder();
+}
+function toggleManager() {
+  const m = document.getElementById('exoManager');
+  const open = m.style.display === 'none';
+  m.style.display = open ? 'block' : 'none';
+  document.getElementById('mgrBtn').textContent = open ? '✕ Fermer la gestion' : '⚙️ Gérer les exercices';
+  if (open) renderManager();
+}
+function renderManager() {
+  const m = document.getElementById('exoManager');
+  const section = (bucket, title) => `
+    <div style="margin-top:10px">
+      <div class="muted" style="font-size:12px;margin-bottom:6px">${title}</div>
+      ${exosFor(bucket).map(e=>`
+        <div class="flex-between" style="padding:6px 0;border-bottom:1px solid var(--line)">
+          <span style="font-size:14px">${e}</span>
+          <button class="danger small" onclick="removeExo('${bucket}', this.dataset.n)" data-n="${e.replace(/"/g,'&quot;')}">Retirer</button>
+        </div>`).join('') || '<div class="muted" style="font-size:13px">—</div>'}
+    </div>`;
+  m.innerHTML = `<div class="card" style="background:var(--card2);margin-top:8px">
+      <p class="muted" style="font-size:12.5px">Retire les exercices que tu n'utilises pas. Ça ne touche pas tes séances déjà enregistrées.</p>
+      ${section(curType, 'Exercices ' + curType)}
+      ${section('Abdos', 'Abdos')}
+    </div>`;
+}
+function removeExo(bucket, name) {
+  const custom = db.customExos[bucket] || [];
+  if (custom.includes(name)) db.customExos[bucket] = custom.filter(x => x !== name); // ajouté manuellement → on l'efface
+  else { db.hidden[bucket] = db.hidden[bucket] || []; if(!db.hidden[bucket].includes(name)) db.hidden[bucket].push(name); } // par défaut → masqué
+  save(); refreshExoPick(); renderManager();
+}
+function addSet(i) { curExos[i].sets.push({reps:'',weight:''}); renderExoBuilder(); }
+function delSet(i,j) { curExos[i].sets.splice(j,1); if(!curExos[i].sets.length) curExos.splice(i,1); renderExoBuilder(); }
+function delExo(i) { curExos.splice(i,1); renderExoBuilder(); }
+function updSet(i,j,field,val) { curExos[i].sets[j][field] = val; }
+function updExo(i,field,val) { curExos[i][field] = val; }
+// dernier commentaire + difficulté enregistrés pour cet exercice
+function lastExoData(name) {
+  for (let k = db.sessions.length-1; k>=0; k--) {
+    const ex = db.sessions[k].exercises.find(e=>e.name===name);
+    if (ex && (ex.note || ex.difficulty)) return { note: ex.note||'', difficulty: ex.difficulty||'', date: db.sessions[k].date };
+  }
+  return null;
+}
+
+function renderExoBuilder() {
+  const c = document.getElementById('exoContainer');
+  if (!curExos.length) { c.innerHTML = '<p class="muted" style="margin-bottom:8px">Ajoute des exercices ci-dessous.</p>'; return; }
+  c.innerHTML = curExos.map((ex,i) => {
+    const last = lastExoData(ex.name);
+    const hint = last ? `<div class="last-hint">⏮ Dernière fois (${fmtDate(last.date)}) :
+        ${last.difficulty?`<b>diff. ${last.difficulty}/10</b>`:''}${last.difficulty&&last.note?' · ':''}${last.note?'« '+last.note+' »':''}</div>` : '';
+    return `
+    <div class="exo-block">
+      <div class="flex-between"><h3>${ex.name}</h3>
+        <button class="danger small" onclick="delExo(${i})">Suppr.</button></div>
+      ${hint}
+      ${ex.sets.map((s,j)=>`
+        <div class="set-line">
+          <span class="idx">${j+1}</span>
+          <input type="number" placeholder="reps" value="${s.reps}" oninput="updSet(${i},${j},'reps',this.value)" style="width:70px">
+          <span class="muted">×</span>
+          <input type="number" placeholder="kg" step="0.5" value="${s.weight}" oninput="updSet(${i},${j},'weight',this.value)" style="width:80px">
+          <span class="muted">kg</span>
+          <button class="danger small" onclick="delSet(${i},${j})">✕</button>
+        </div>`).join('')}
+      <button class="ghost small" onclick="addSet(${i})">+ Série</button>
+      <div style="margin-top:12px">
+        <label class="lbl">Difficulté ressentie : <b id="diffVal${i}" style="color:var(--text)">${ex.difficulty?ex.difficulty+'/10':'—'}</b></label>
+        <div class="diff-scale">
+          ${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button type="button" class="diff-dot ${ex.difficulty&&n<=ex.difficulty?'on':''}" data-n="${n}" onclick="setDiff(${i},${n})">${n}</button>`).join('')}
+        </div>
+      </div>
+      <input type="text" placeholder="Commentaire : prise (neutre, pronation…), technique…" value="${(ex.note||'').replace(/"/g,'&quot;')}" oninput="updExo(${i},'note',this.value)" style="width:100%;margin-top:10px">
+    </div>`;}).join('');
+}
+function setDiff(i,n) {
+  curExos[i].difficulty = (curExos[i].difficulty==n) ? '' : n; // re-cliquer désélectionne
+  document.getElementById('diffVal'+i).textContent = curExos[i].difficulty ? curExos[i].difficulty+'/10' : '—';
+  document.querySelectorAll('.exo-block')[i].querySelectorAll('.diff-dot').forEach(b=>
+    b.classList.toggle('on', curExos[i].difficulty && +b.dataset.n <= curExos[i].difficulty));
+}
+function saveSession() {
+  const date = document.getElementById('sDate').value || today();
+  const exercises = curExos.map(ex => ({
+    name: ex.name,
+    note: (ex.note||'').trim(),
+    difficulty: ex.difficulty || '',
+    sets: ex.sets
+      .filter(s => s.reps!=='' && s.weight!=='')
+      .map(s => ({reps: +s.reps, weight: +s.weight}))
+  })).filter(ex => ex.sets.length);
+  if (!exercises.length) { document.getElementById('sessionMsg').textContent = '⚠️ Ajoute au moins une série complète.'; return; }
+  db.sessions.push({ id: Date.now(), date, type: curType, exercises });
+  db.sessions.sort((a,b)=>a.date.localeCompare(b.date));
+  save();
+  curExos = []; renderExoBuilder();
+  document.getElementById('sessionMsg').textContent = '✅ Séance enregistrée !';
+  setTimeout(()=>document.getElementById('sessionMsg').textContent='', 2500);
+  showTab('home');
+}
+function initSession() {
+  document.getElementById('sDate').value = today();
+  renderTypeSeg();
+  pickType('Push');
+  curExos = []; renderExoBuilder();
+}
+
+/* ============ ACCUEIL ============ */
+function renderHome() {
+  const w = db.weights;
+  document.getElementById('curWeight').textContent = w.length ? w[w.length-1].value+' kg' : '—';
+  const dEl = document.getElementById('weightDelta');
+  if (w.length>=2) {
+    const d = (w[w.length-1].value - w[0].value);
+    dEl.textContent = (d>=0?'+':'') + d.toFixed(1) + ' kg';
+    dEl.style.color = d>0 ? '#ff6b6b' : d<0 ? 'var(--legs)' : 'var(--muted)';
+  } else dEl.textContent = '—';
+
+  // semaine en cours
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+  const wkSessions = db.sessions.filter(s => new Date(s.date+'T00:00') >= weekAgo);
+  const counts = {}; TYPES.forEach(t=>counts[t]=0);
+  wkSessions.forEach(s => { if(counts[s.type]!==undefined) counts[s.type]++; });
+  document.getElementById('weekStats').innerHTML =
+    `<div><div class="big" style="font-size:24px">${wkSessions.length}</div><div class="muted">séances</div></div>` +
+    TYPES.filter(t=>counts[t]>0).map(t=>`<div><div class="big" style="font-size:24px;color:var(--${t.toLowerCase()})">${counts[t]}</div><div class="muted">${t}</div></div>`).join('');
+
+  // dernières séances
+  const recent = [...db.sessions].reverse().slice(0,5);
+  document.getElementById('recentSessions').innerHTML = recent.length
+    ? recent.map(s => sessionRow(s)).join('')
+    : '<div class="empty">Aucune séance. Commence par en ajouter une !</div>';
+}
+function sessionRow(s) {
+  const exoCount = s.exercises.length;
+  const totalSets = s.exercises.reduce((a,e)=>a+e.sets.length,0);
+  return `<div class="session-item" onclick="viewSession(${s.id})">
+    <div class="flex-between">
+      <span><span class="pill ${s.type}">${s.type}</span> &nbsp;<b>${fmtDate(s.date)}</b></span>
+      <span class="muted">${exoCount} exos · ${totalSets} séries</span>
+    </div></div>`;
+}
+function viewSession(id) {
+  const s = db.sessions.find(x=>x.id===id);
+  if (!s) return;
+  let txt = `${s.type} — ${fmtDate(s.date)}\n\n`;
+  s.exercises.forEach(e => {
+    txt += `${e.name}\n  ` + e.sets.map(st=>`${st.reps}×${st.weight}kg`).join('  ') + '\n';
+    if (e.difficulty) txt += `  Difficulté : ${e.difficulty}/10\n`;
+    if (e.note) txt += `  « ${e.note} »\n`;
+  });
+  if (confirm(txt + '\n\nSupprimer cette séance ?')) {
+    db.sessions = db.sessions.filter(x=>x.id!==id);
+    save(); renderHome(); renderLog();
+  }
+}
+
+/* ============ JOURNAL (groupé par semaine) ============ */
+function renderLog() {
+  const c = document.getElementById('allSessions');
+  if (!db.sessions.length) { c.innerHTML = '<div class="empty">Aucune séance enregistrée.</div>'; return; }
+  // regroupe les séances par semaine (lundi → dimanche)
+  const groups = {};
+  db.sessions.forEach(s => { (groups[mondayKey(s.date)] ||= []).push(s); });
+  const weeks = Object.keys(groups).sort().reverse(); // plus récent en haut
+  c.innerHTML = weeks.map(wk => {
+    const items = groups[wk].sort((a,b)=>b.date.localeCompare(a.date));
+    return `<div style="margin-bottom:18px">
+      <div class="flex-between" style="margin-bottom:4px">
+        <b style="font-size:13px">${weekLabel(wk)}</b>
+        <span class="muted" style="font-size:12px">${items.length} séance${items.length>1?'s':''}</span>
+      </div>
+      ${items.map(s=>sessionRow(s)).join('')}
+    </div>`;
+  }).join('');
+}
+
+/* ============ PROGRÈS ============ */
+function renderProgressTab() {
+  const sel = document.getElementById('progPick');
+  const names = [...new Set(db.sessions.flatMap(s=>s.exercises.map(e=>e.name)))].sort();
+  if (!names.length) {
+    sel.innerHTML = '<option>—</option>';
+    document.getElementById('progChart').innerHTML = '<div class="empty">Enregistre des séances pour voir tes progrès.</div>';
+    document.getElementById('progStats').innerHTML='';
+    drawBarChart('volChart', []);
+    return;
+  }
+  const prev = sel.value;
+  sel.innerHTML = names.map(n=>`<option ${n===prev?'selected':''}>${n}</option>`).join('');
+  renderProgress();
+  renderVolume();
+}
+function renderProgress() {
+  const name = document.getElementById('progPick').value;
+  // pour chaque date, on prend la charge max travaillée sur cet exo
+  const pts = [];
+  db.sessions.forEach(s => {
+    const ex = s.exercises.find(e=>e.name===name);
+    if (ex) {
+      const maxW = Math.max(...ex.sets.map(st=>st.weight));
+      pts.push({x: s.date, y: maxW});
+    }
+  });
+  pts.sort((a,b)=>a.x.localeCompare(b.x));
+  drawLineChart('progChart', pts, 'kg', '#7bd88f');
+  const st = document.getElementById('progStats');
+  if (pts.length) {
+    const max = Math.max(...pts.map(p=>p.y));
+    const start = pts[0].y, end = pts[pts.length-1].y;
+    const gain = end-start;
+    st.innerHTML =
+      `<div><div class="big" style="font-size:22px">${end} kg</div><div class="muted">charge actuelle</div></div>
+       <div><div class="big" style="font-size:22px">${max} kg</div><div class="muted">record</div></div>
+       <div><div class="big" style="font-size:22px;color:${gain>=0?'var(--legs)':'#ff6b6b'}">${gain>=0?'+':''}${gain} kg</div><div class="muted">progression</div></div>`;
+  } else st.innerHTML='';
+}
+function renderVolume() {
+  // tonnage par semaine (8 dernières semaines)
+  const byWeek = {};
+  db.sessions.forEach(s => {
+    const d = new Date(s.date+'T00:00');
+    const monday = new Date(d); monday.setDate(d.getDate() - ((d.getDay()+6)%7));
+    const key = monday.toISOString().slice(0,10);
+    const vol = s.exercises.reduce((a,e)=>a + e.sets.reduce((b,st)=>b+st.reps*st.weight,0),0);
+    byWeek[key] = (byWeek[key]||0) + vol;
+  });
+  const data = Object.entries(byWeek).sort((a,b)=>a[0].localeCompare(b[0])).slice(-8)
+    .map(([k,v])=>({label: fmtDate(k), value: Math.round(v)}));
+  drawBarChart('volChart', data);
+}
+
+/* ============ GRAPHIQUES (SVG natif) ============ */
+function drawLineChart(elId, points, unit, color) {
+  const el = document.getElementById(elId);
+  if (!points.length) { el.innerHTML='<div class="empty">Pas encore de données.</div>'; return; }
+  const W=620, H=200, pad=36;
+  const ys = points.map(p=>p.y);
+  let min=Math.min(...ys), max=Math.max(...ys);
+  if (min===max) { min-=1; max+=1; }
+  const pY=v=>H-pad-(v-min)/(max-min)*(H-2*pad);
+  const pX=i=>points.length===1?W/2:pad+i/(points.length-1)*(W-2*pad);
+  const path = points.map((p,i)=>`${i?'L':'M'}${pX(i).toFixed(1)},${pY(p.y).toFixed(1)}`).join(' ');
+  const area = path + ` L${pX(points.length-1)},${H-pad} L${pX(0)},${H-pad} Z`;
+  const dots = points.map((p,i)=>`<circle cx="${pX(i).toFixed(1)}" cy="${pY(p.y).toFixed(1)}" r="3.5" fill="${color}"/>`).join('');
+  // labels axe X (max 6)
+  const step = Math.ceil(points.length/6);
+  let xlabels='';
+  points.forEach((p,i)=>{ if(i%step===0||i===points.length-1) xlabels+=`<text x="${pX(i).toFixed(1)}" y="${H-10}" text-anchor="middle">${fmtDate(p.x)}</text>`; });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%">
+    <defs><linearGradient id="g_${elId}" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="${color}" stop-opacity=".25"/>
+      <stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+    <text x="4" y="${pad-8}">${max.toFixed(1)}${unit}</text>
+    <text x="4" y="${H-pad+4}">${min.toFixed(1)}${unit}</text>
+    <path d="${area}" fill="url(#g_${elId})"/>
+    <path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>
+    ${dots}${xlabels}</svg>`;
+}
+function drawBarChart(elId, data) {
+  const el = document.getElementById(elId);
+  if (!data.length) { el.innerHTML='<div class="empty">Pas encore de données.</div>'; return; }
+  const W=620,H=200,pad=30;
+  const max=Math.max(...data.map(d=>d.value))||1;
+  const bw=(W-2*pad)/data.length;
+  let bars='';
+  data.forEach((d,i)=>{
+    const h=(d.value/max)*(H-2*pad);
+    const x=pad+i*bw+bw*0.15, y=H-pad-h, w=bw*0.7;
+    bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="#4f8cff"/>
+      <text x="${(x+w/2).toFixed(1)}" y="${H-pad+14}" text-anchor="middle">${d.label}</text>
+      <text x="${(x+w/2).toFixed(1)}" y="${(y-5).toFixed(1)}" text-anchor="middle" style="fill:var(--text)">${d.value>=1000?(d.value/1000).toFixed(1)+'k':d.value}</text>`;
+  });
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%">${bars}</svg>`;
+}
+
+/* ============ EXPORT / IMPORT ============ */
+function exportData() {
+  const blob = new Blob([JSON.stringify(db,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'masalle-sauvegarde-'+today()+'.json';
+  a.click();
+}
+function importData(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (d.weights && d.sessions) { db = ensureShape(d); save(); showTab('home'); alert('Données importées ✅'); }
+      else alert('Fichier invalide.');
+    } catch(err){ alert('Fichier illisible.'); }
+  };
+  r.readAsText(file);
+}
+
+/* ============ SYNCHRONISATION CLOUD (Supabase) ============ */
+let supa = null, user = null, cloudSaveTimer = null;
+
+function cloudConfigured() {
+  return /^https?:\/\//.test(SUPABASE_URL) && SUPABASE_ANON_KEY.length > 20;
+}
+function setBadge(state, label) {
+  const b = document.getElementById('syncBadge');
+  b.className = 'sync-badge ' + state;
+  b.textContent = label;
+}
+function scheduleCloudSave() {
+  if (!user) return;                       // mode local : rien à pousser
+  setBadge('saving', 'Sauvegarde…');
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(pushCloud, 600);
+}
+async function pushCloud() {
+  if (!user) return;
+  const { error } = await supa.from('app_data')
+    .upsert({ user_id: user.id, data: db, updated_at: new Date().toISOString() });
+  setBadge(error ? 'err' : 'ok', error ? 'Erreur sync' : 'Synchronisé ✓');
+  if (error) console.error('pushCloud', error);
+}
+async function pullCloud() {
+  const { data, error } = await supa.from('app_data')
+    .select('data').eq('user_id', user.id).maybeSingle();
+  if (error) { console.error('pullCloud', error); return null; }
+  return data ? data.data : null;
+}
+
+/* ---- Authentification ---- */
+function showAuth() { document.getElementById('authScreen').style.display = 'flex'; }
+function hideAuth() { document.getElementById('authScreen').style.display = 'none'; }
+function authMsg(txt, cls) { const m = document.getElementById('authMsg'); m.textContent = txt; m.className = cls || ''; }
+
+async function doSignUp() {
+  const email = document.getElementById('authEmail').value.trim();
+  const pass = document.getElementById('authPass').value;
+  if (!email || pass.length < 6) { authMsg('E-mail + mot de passe (6 caractères min).', 'err'); return; }
+  authMsg('Création du compte…');
+  const { data, error } = await supa.auth.signUp({ email, password: pass });
+  if (error) { authMsg(error.message, 'err'); return; }
+  if (data.session) { await onLogin(data.session.user); }      // confirmation e-mail désactivée
+  else authMsg('Compte créé ! Vérifie ta boîte mail pour confirmer, puis connecte-toi.', 'ok');
+}
+async function doSignIn() {
+  const email = document.getElementById('authEmail').value.trim();
+  const pass = document.getElementById('authPass').value;
+  if (!email || !pass) { authMsg('Renseigne ton e-mail et ton mot de passe.', 'err'); return; }
+  authMsg('Connexion…');
+  const { data, error } = await supa.auth.signInWithPassword({ email, password: pass });
+  if (error) { authMsg(error.message, 'err'); return; }
+  await onLogin(data.user);
+}
+async function doSignOut() {
+  await supa.auth.signOut();
+  user = null;
+  location.reload();
+}
+
+async function onLogin(u) {
+  user = u;
+  authMsg('Chargement de tes données…');
+  const cloud = await pullCloud();
+  if (cloud) {
+    db = ensureShape(cloud);                         // données du cloud = référence
+    localStorage.setItem(DB_KEY, JSON.stringify(db));
+  } else {
+    // 1ʳᵉ connexion : on envoie les données locales déjà présentes vers le cloud
+    await pushCloud();
+  }
+  hideAuth();
+  document.getElementById('acctBar').style.display = 'flex';
+  document.getElementById('acctEmail').textContent = u.email;
+  document.getElementById('logoutBtn').style.display = 'inline';
+  setBadge('ok', 'Synchronisé ✓');
+  startApp();
+}
+
+/* ============ DÉMARRAGE ============ */
+function startApp() {
+  initSession();
+  refreshExoPick();
+  renderHome();
+}
+async function boot() {
+  if (!cloudConfigured() || !window.supabase) {      // mode local (cloud non configuré ou librairie indisponible)
+    document.getElementById('acctBar').style.display = 'flex';
+    setBadge('local', window.supabase || !cloudConfigured() ? 'Local (cet appareil)' : 'Hors-ligne');
+    startApp();
+    return;
+  }
+  supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const { data: { session } } = await supa.auth.getSession();
+  if (session) await onLogin(session.user);          // déjà connecté
+  else { showAuth(); }                                // sinon : écran de connexion
+}
+boot();
+</script>
+</body>
+</html>
