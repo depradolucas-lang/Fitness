@@ -115,6 +115,12 @@
     background:rgba(79,140,255,.1); border:1px solid rgba(79,140,255,.25);
     color:var(--text); font-size:12.5px; padding:7px 10px; border-radius:9px; margin-bottom:10px;
   }
+  .repeat-btn {
+    width:100%; text-align:left; background:var(--card2); border:1px solid var(--accent);
+    color:var(--text); border-radius:12px; padding:11px 14px; margin-bottom:14px;
+    display:flex; justify-content:space-between; align-items:center; gap:10px; font-weight:600;
+  }
+  .repeat-btn span { color:var(--muted); font-weight:500; font-size:12px; }
   .session-item { border-bottom:1px solid var(--line); padding:12px 0; cursor:pointer; }
   .session-item:last-child { border-bottom:none; }
   label.lbl { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
@@ -229,11 +235,13 @@
   <!-- SÉANCE -->
   <section id="tab-session" class="tab">
     <div class="card">
-      <h2>➕ Nouvelle séance</h2>
+      <h2 id="sessionTitle">➕ Nouvelle séance</h2>
       <label class="lbl">Type</label>
       <div class="seg" id="typeSeg" style="margin-bottom:12px"></div>
       <label class="lbl">Date</label>
       <input type="date" id="sDate" style="margin-bottom:14px;width:100%">
+
+      <div id="repeatBar"></div>
 
       <div id="exoContainer"></div>
 
@@ -245,8 +253,9 @@
         <button class="ghost small" onclick="toggleManager()" id="mgrBtn" style="font-size:12px;padding:4px 10px">⚙️ Gérer les exercices</button>
       </div>
       <div id="exoManager" style="display:none"></div>
-      <div class="row" style="margin-top:14px">
-        <button class="grow" onclick="saveSession()">💾 Enregistrer la séance</button>
+      <div class="flex-between" style="margin-top:16px;gap:10px">
+        <button class="danger" id="delSessionBtn" onclick="deleteEditingSession()" style="display:none;padding:11px 16px">🗑 Supprimer</button>
+        <button class="grow" id="saveSessionBtn" onclick="saveSession()">💾 Enregistrer la séance</button>
       </div>
       <p class="muted" id="sessionMsg" style="margin-top:8px"></p>
     </div>
@@ -291,7 +300,7 @@
 <nav>
   <button class="active" data-tab="home" onclick="showTab('home')"><span class="ico">🏠</span>Accueil</button>
   <button data-tab="weight" onclick="showTab('weight')"><span class="ico">⚖️</span>Poids</button>
-  <button data-tab="session" onclick="showTab('session')"><span class="ico">➕</span>Séance</button>
+  <button data-tab="session" onclick="gotoSessionTab()"><span class="ico">➕</span>Séance</button>
   <button data-tab="progress" onclick="showTab('progress')"><span class="ico">📈</span>Progrès</button>
   <button data-tab="log" onclick="showTab('log')"><span class="ico">📚</span>Journal</button>
 </nav>
@@ -406,9 +415,10 @@ function renderWeight() {
   drawLineChart('weightChart', db.weights.map(w=>({x:w.date, y:w.value})), 'kg', '#4f8cff');
 }
 
-/* ============ SÉANCE (création) ============ */
+/* ============ SÉANCE (création / modification) ============ */
 let curType = 'Push';
-let curExos = []; // {name, sets:[{reps,weight}]}
+let curExos = [];        // {name, sets:[{reps,weight}], note, difficulty}
+let editingId = null;    // id de la séance en cours de modification (null = nouvelle séance)
 
 function renderTypeSeg() {
   document.getElementById('typeSeg').innerHTML =
@@ -418,7 +428,35 @@ function pickType(t) {
   curType = t;
   document.querySelectorAll('#typeSeg button').forEach(b => b.classList.toggle('on', b.dataset.t===t));
   refreshExoPick();
+  renderRepeatBar();
   if (document.getElementById('exoManager').style.display !== 'none') renderManager();
+}
+// dernière séance enregistrée d'un type donné
+function lastSessionOf(type) {
+  for (let i = db.sessions.length-1; i>=0; i--) if (db.sessions[i].type === type) return db.sessions[i];
+  return null;
+}
+function renderRepeatBar() {
+  const bar = document.getElementById('repeatBar');
+  const last = lastSessionOf(curType);
+  if (editingId !== null || !last) { bar.innerHTML = ''; return; }
+  bar.innerHTML = `<button class="repeat-btn" onclick="loadLastSession()">
+      🔁 Reprendre la dernière séance ${curType}
+      <span>${last.exercises.length} exos · ${fmtDate(last.date)}</span>
+    </button>`;
+}
+function loadLastSession() {
+  const last = lastSessionOf(curType);
+  if (!last) return;
+  if (curExos.length && !confirm('Remplacer les exercices en cours par ceux de la dernière séance ' + curType + ' ?')) return;
+  // copie indépendante : on reprend exos, charges, reps, difficulté et commentaires
+  curExos = last.exercises.map(e => ({
+    name: e.name,
+    note: e.note || '',
+    difficulty: e.difficulty || '',
+    sets: e.sets.map(s => ({ reps: String(s.reps), weight: String(s.weight) }))
+  }));
+  renderExoBuilder();
 }
 function refreshExoPick() {
   const sel = document.getElementById('exoPick');
@@ -533,19 +571,77 @@ function saveSession() {
       .map(s => ({reps: +s.reps, weight: +s.weight}))
   })).filter(ex => ex.sets.length);
   if (!exercises.length) { document.getElementById('sessionMsg').textContent = '⚠️ Ajoute au moins une série complète.'; return; }
-  db.sessions.push({ id: Date.now(), date, type: curType, exercises });
+  if (editingId !== null) {                       // --- modification d'une séance existante ---
+    const s = db.sessions.find(x => x.id === editingId);
+    if (s) { s.date = date; s.type = curType; s.exercises = exercises; }
+    db.sessions.sort((a,b)=>a.date.localeCompare(b.date));
+    save();
+    newSession();                                 // remet le formulaire à neuf
+    showTab('log');
+    flashMsg('✅ Séance modifiée !');
+    return;
+  }
+  db.sessions.push({ id: Date.now(), date, type: curType, exercises });  // --- nouvelle séance ---
   db.sessions.sort((a,b)=>a.date.localeCompare(b.date));
   save();
   curExos = []; renderExoBuilder();
-  document.getElementById('sessionMsg').textContent = '✅ Séance enregistrée !';
-  setTimeout(()=>document.getElementById('sessionMsg').textContent='', 2500);
+  flashMsg('✅ Séance enregistrée !');
   showTab('home');
 }
-function initSession() {
+function flashMsg(txt) {
+  const m = document.getElementById('sessionMsg');
+  m.textContent = txt;
+  setTimeout(()=>{ if (m.textContent === txt) m.textContent=''; }, 2500);
+}
+// passe l'écran en mode "nouvelle séance" (vide) ou "modification"
+function setEditUI(isEdit) {
+  document.getElementById('sessionTitle').textContent = isEdit ? '✏️ Modifier la séance' : '➕ Nouvelle séance';
+  document.getElementById('delSessionBtn').style.display = isEdit ? 'inline-block' : 'none';
+  document.getElementById('saveSessionBtn').textContent = isEdit ? '💾 Sauvegarder' : '💾 Enregistrer la séance';
+}
+function newSession() {
+  editingId = null;
   document.getElementById('sDate').value = today();
+  document.getElementById('sessionMsg').textContent = '';
+  curExos = [];
+  setEditUI(false);
+  pickType(curType);          // garde le type courant, ré-affiche la barre "reprendre"
+  renderExoBuilder();
+}
+// bouton "Séance" du menu : sort proprement du mode modification si besoin
+function gotoSessionTab() {
+  if (editingId !== null) newSession();
+  showTab('session');
+}
+// ouvre une séance pour la modifier
+function editSession(id) {
+  const s = db.sessions.find(x => x.id === id);
+  if (!s) return;
+  editingId = id;
+  document.getElementById('sDate').value = s.date;
+  document.getElementById('sessionMsg').textContent = '';
+  pickType(s.type);           // editingId déjà défini → la barre "reprendre" reste masquée
+  curExos = s.exercises.map(e => ({
+    name: e.name,
+    note: e.note || '',
+    difficulty: e.difficulty || '',
+    sets: e.sets.map(st => ({ reps: String(st.reps), weight: String(st.weight) }))
+  }));
+  setEditUI(true);
+  renderExoBuilder();
+  showTab('session');
+}
+function deleteEditingSession() {
+  if (editingId === null) return;
+  if (!confirm('Supprimer définitivement cette séance ? Cette action est irréversible.')) return;
+  db.sessions = db.sessions.filter(x => x.id !== editingId);
+  save();
+  newSession();
+  showTab('log');
+}
+function initSession() {
   renderTypeSeg();
-  pickType('Push');
-  curExos = []; renderExoBuilder();
+  newSession();               // initialise en mode "nouvelle séance"
 }
 
 /* ============ ACCUEIL ============ */
@@ -577,25 +673,11 @@ function renderHome() {
 function sessionRow(s) {
   const exoCount = s.exercises.length;
   const totalSets = s.exercises.reduce((a,e)=>a+e.sets.length,0);
-  return `<div class="session-item" onclick="viewSession(${s.id})">
+  return `<div class="session-item" onclick="editSession(${s.id})">
     <div class="flex-between">
       <span><span class="pill ${s.type}">${s.type}</span> &nbsp;<b>${fmtDate(s.date)}</b></span>
-      <span class="muted">${exoCount} exos · ${totalSets} séries</span>
+      <span class="muted">${exoCount} exos · ${totalSets} séries ›</span>
     </div></div>`;
-}
-function viewSession(id) {
-  const s = db.sessions.find(x=>x.id===id);
-  if (!s) return;
-  let txt = `${s.type} — ${fmtDate(s.date)}\n\n`;
-  s.exercises.forEach(e => {
-    txt += `${e.name}\n  ` + e.sets.map(st=>`${st.reps}×${st.weight}kg`).join('  ') + '\n';
-    if (e.difficulty) txt += `  Difficulté : ${e.difficulty}/10\n`;
-    if (e.note) txt += `  « ${e.note} »\n`;
-  });
-  if (confirm(txt + '\n\nSupprimer cette séance ?')) {
-    db.sessions = db.sessions.filter(x=>x.id!==id);
-    save(); renderHome(); renderLog();
-  }
 }
 
 /* ============ JOURNAL (groupé par semaine) ============ */
