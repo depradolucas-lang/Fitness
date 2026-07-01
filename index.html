@@ -19,6 +19,7 @@
     --legs: #7bd88f;
     --upper: #a78bfa;
     --bras: #ff6fae;
+    --full: #2dd4bf;
     --radius: 14px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -83,6 +84,7 @@
   .pill.Legs { background: rgba(123,216,143,.15); color: var(--legs); }
   .pill.Upper { background: rgba(167,139,250,.15); color: var(--upper); }
   .pill.Bras { background: rgba(255,111,174,.15); color: var(--bras); }
+  .pill.Full { background: rgba(45,212,191,.15); color: var(--full); }
   nav {
     position: fixed; bottom: 0; left: 0; right: 0;
     background: var(--card); border-top: 1px solid var(--line);
@@ -132,6 +134,7 @@
   .seg button.on[data-t=Legs]{ background:var(--legs); border-color:var(--legs);}
   .seg button.on[data-t=Upper]{ background:var(--upper); border-color:var(--upper);}
   .seg button.on[data-t=Bras]{ background:var(--bras); border-color:var(--bras);}
+  .seg button.on[data-t=Full]{ background:var(--full); border-color:var(--full);}
   .flex-between { display:flex; justify-content:space-between; align-items:center; gap:8px; }
   details summary { cursor:pointer; color:var(--muted); font-size:13px; }
   /* --- compte / sync --- */
@@ -314,9 +317,10 @@ const DEFAULT_EXOS = {
   Legs: ['Squat', 'Presse à cuisses', 'Soulevé de terre', 'Fentes', 'Leg curl', 'Mollets debout'],
   Upper: ['Développé couché', 'Tractions', 'Développé militaire', 'Rowing barre', 'Dips', 'Curl biceps', 'Extension triceps', 'Élévations latérales'],
   Bras: ['Curl biceps', 'Curl marteau', 'Curl pupitre', 'Extension triceps', 'Dips', 'Développé militaire', 'Élévations latérales', 'Face pull', 'Oiseau (arrière épaule)'],
+  Full: ['Squat', 'Développé couché', 'Rowing barre', 'Développé militaire', 'Soulevé de terre', 'Tractions', 'Fentes', 'Curl biceps', 'Extension triceps'],
   Abdos: ['Crunch', 'Relevé de jambes', 'Gainage (planche)', 'Russian twist', 'Roue abdominale', 'Crunch à la poulie', 'Relevé de genoux suspendu']
 };
-const TYPES = ['Push','Pull','Legs','Upper','Bras'];   // types de séance (boutons + couleurs)
+const TYPES = ['Push','Pull','Legs','Upper','Bras','Full'];   // types de séance (boutons + couleurs)
 const BUCKETS = [...TYPES, 'Abdos'];                    // + Abdos, dispo dans toutes les séances
 function emptyCustom() { const o={}; BUCKETS.forEach(t=>o[t]=[]); return o; }
 
