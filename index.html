@@ -95,7 +95,7 @@
   nav button {
     background: none; border: none; color: var(--muted);
     display: flex; flex-direction: column; align-items: center; gap: 2px;
-    font-size: 11px; font-weight: 500; padding: 4px 14px;
+    font-size: 11px; font-weight: 500; padding: 4px 8px; flex: 1;
   }
   nav button.active { color: var(--accent); }
   nav button .ico { font-size: 20px; }
@@ -117,12 +117,44 @@
     background:rgba(79,140,255,.1); border:1px solid rgba(79,140,255,.25);
     color:var(--text); font-size:12.5px; padding:7px 10px; border-radius:9px; margin-bottom:10px;
   }
-  .repeat-btn {
-    width:100%; text-align:left; background:var(--card2); border:1px solid var(--accent);
-    color:var(--text); border-radius:12px; padding:11px 14px; margin-bottom:14px;
+  .target-hint { font-size:12.5px; color:var(--muted); margin-bottom:8px; }
+  .target-hint b { color:var(--text); }
+  .repeat-btn, .act-btn {
+    width:100%; text-align:left; background:var(--card2); border:1px solid var(--line);
+    color:var(--text); border-radius:12px; padding:11px 14px; margin-bottom:10px;
     display:flex; justify-content:space-between; align-items:center; gap:10px; font-weight:600;
   }
-  .repeat-btn span { color:var(--muted); font-weight:500; font-size:12px; }
+  .repeat-btn span, .act-btn span { color:var(--muted); font-weight:500; font-size:12px; }
+  .act-btn.prog { border-color:var(--accent); }
+  .warmup {
+    background:rgba(255,122,89,.08); border:1px solid rgba(255,122,89,.3);
+    border-radius:12px; padding:10px 14px; margin-bottom:12px;
+  }
+  .warmup summary { list-style:none; cursor:pointer; font-weight:600; color:var(--push);
+    display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .warmup summary::-webkit-details-marker { display:none; }
+  .warmup summary span { color:var(--muted); font-weight:500; font-size:12px; }
+  .warmup[open] summary { margin-bottom:8px; }
+  .warmup ol { margin:0; padding-left:20px; }
+  .warmup li { font-size:13px; color:var(--text); padding:3px 0; }
+  /* --- guide / lexique --- */
+  .guide-group { font-size:13px; text-transform:uppercase; letter-spacing:.5px; color:var(--accent);
+    margin:18px 4px 8px; }
+  .guide-item { background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:12px 14px; margin-bottom:8px; }
+  .guide-item summary { list-style:none; cursor:pointer; font-weight:600; font-size:14px;
+    display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+  .guide-item summary::-webkit-details-marker { display:none; }
+  .guide-item[open] summary { margin-bottom:8px; }
+  .gtag { font-size:11px; font-weight:600; color:var(--muted); background:var(--card2);
+    border:1px solid var(--line); border-radius:999px; padding:2px 8px; }
+  .guide-body p { font-size:13px; color:var(--muted); margin:5px 0; }
+  .guide-body p b { color:var(--text); }
+  .guide-body p.prise { background:rgba(79,140,255,.1); border:1px solid rgba(79,140,255,.25);
+    border-radius:9px; padding:7px 10px; margin-top:8px; color:var(--text); }
+  .guide-body p.prise b { color:var(--accent); }
+  .guide-rule { font-size:12.5px; color:var(--muted); background:var(--card);
+    border:1px dashed var(--line); border-radius:12px; padding:12px 14px; margin-top:14px; }
   .session-item { border-bottom:1px solid var(--line); padding:12px 0; cursor:pointer; }
   .session-item:last-child { border-bottom:none; }
   label.lbl { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
@@ -244,6 +276,7 @@
       <label class="lbl">Date</label>
       <input type="date" id="sDate" style="margin-bottom:14px;width:100%">
 
+      <div id="warmupBox"></div>
       <div id="repeatBar"></div>
 
       <div id="exoContainer"></div>
@@ -252,7 +285,8 @@
         <select id="exoPick" class="grow"></select>
         <button class="ghost small" onclick="addExoFromPick()">+ Exercice</button>
       </div>
-      <div style="text-align:right;margin-top:6px">
+      <div class="flex-between" style="margin-top:6px">
+        <button class="ghost small" onclick="addAbsProgram()" style="font-size:12px;padding:4px 10px">＋ Abdos (fin de séance)</button>
         <button class="ghost small" onclick="toggleManager()" id="mgrBtn" style="font-size:12px;padding:4px 10px">⚙️ Gérer les exercices</button>
       </div>
       <div id="exoManager" style="display:none"></div>
@@ -298,6 +332,16 @@
     </div>
   </section>
 
+  <!-- GUIDE / LEXIQUE -->
+  <section id="tab-guide" class="tab">
+    <div class="card">
+      <h2>📖 Guide technique</h2>
+      <p class="muted" style="margin-bottom:12px">Comment faire chaque exercice (réglage · amplitude · sensation · erreur) et quelles prises choisir.</p>
+      <input type="text" id="guideSearch" placeholder="🔍 Rechercher un exercice…" style="width:100%" oninput="renderGuide(this.value)">
+    </div>
+    <div id="guideContent"></div>
+  </section>
+
 </div>
 
 <nav>
@@ -306,6 +350,7 @@
   <button data-tab="session" onclick="gotoSessionTab()"><span class="ico">➕</span>Séance</button>
   <button data-tab="progress" onclick="showTab('progress')"><span class="ico">📈</span>Progrès</button>
   <button data-tab="log" onclick="showTab('log')"><span class="ico">📚</span>Journal</button>
+  <button data-tab="guide" onclick="showTab('guide')"><span class="ico">📖</span>Guide</button>
 </nav>
 
 <script>
@@ -317,12 +362,393 @@ const DEFAULT_EXOS = {
   Legs: ['Squat', 'Presse à cuisses', 'Soulevé de terre', 'Fentes', 'Leg curl', 'Mollets debout'],
   Upper: ['Développé couché', 'Tractions', 'Développé militaire', 'Rowing barre', 'Dips', 'Curl biceps', 'Extension triceps', 'Élévations latérales'],
   Bras: ['Curl biceps', 'Curl marteau', 'Curl pupitre', 'Extension triceps', 'Dips', 'Développé militaire', 'Élévations latérales', 'Face pull', 'Oiseau (arrière épaule)'],
-  Full: ['Squat', 'Développé couché', 'Rowing barre', 'Développé militaire', 'Soulevé de terre', 'Tractions', 'Fentes', 'Curl biceps', 'Extension triceps'],
-  Abdos: ['Crunch', 'Relevé de jambes', 'Gainage (planche)', 'Russian twist', 'Roue abdominale', 'Crunch à la poulie', 'Relevé de genoux suspendu']
+  Full: ['Hip thrust machine', 'Hack squat', 'Presse à cuisses', 'Machine abducteurs', 'Leg curl assis', 'Extension mollets', 'Développé poitrine machine', 'Rowing assis', 'Développé militaire machine', 'Relevé de jambes + planche', 'Crunch câble', 'Dead bug'],
+  Abdos: ['Levée de jambe suspendu', 'Crunch inversé', 'Crunch câble lesté', 'Crunch', 'Gainage (planche)', 'Relevé de jambes', 'Russian twist', 'Roue abdominale']
 };
 const TYPES = ['Push','Pull','Legs','Upper','Bras','Full'];   // types de séance (boutons + couleurs)
 const BUCKETS = [...TYPES, 'Abdos'];                    // + Abdos, dispo dans toutes les séances
 function emptyCustom() { const o={}; BUCKETS.forEach(t=>o[t]=[]); return o; }
+
+/* ===== PROGRAMME PAR DÉFAUT (séance pré-remplie, modifiable) — {name, sets, reps (objectif), note} ===== */
+const PROGRAMS = {
+  Push: [
+    {name:'Développé incliné Arsenal ISO', sets:4, reps:'6-8',   note:'Prise neutre. Composé lourd, en 1er à froid'},
+    {name:'Incline Fly (Arsenal)',         sets:3, reps:'10-12', note:'Prise neutre. Isolation étirement, contraction 1 s en haut'},
+    {name:'Pec deck',                      sets:3, reps:'12-15', note:'Prise fixe. Isolation contraction. Serre 1 s'},
+    {name:'Shoulder Press M-Torture',      sets:3, reps:'6-10',  note:'Prise neutre. Composé, amplitude complète'},
+    {name:'Élévation latérale poulie',     sets:4, reps:'15-20', note:'Priorité n°1. Reps hautes. Dernière série : partiels bas'},
+    {name:'Overhead triceps corde',        sets:3, reps:'10-12', note:'Prise neutre (corde). Bras vers l’oreille, long chef étiré'},
+    {name:'Mollet leg press (gastroc)',    sets:4, reps:'8-12',  note:'Lourd. Jambes quasi tendues, pause 1-2 s en bas'}
+  ],
+  Pull: [
+    {name:'Wide Pulldown Rear (M-Torture)',sets:4, reps:'8-10',  note:'Prise large pronation. Tire les coudes vers le bas'},
+    {name:'Rowing unilatéral',             sets:4, reps:'8-10',  note:'Prise neutre, tirage horizontal. Serre les omoplates'},
+    {name:'Pull-over poulie',              sets:3, reps:'10-15', note:'Isolation lats, top pour la largeur'},
+    {name:'Face pull',                     sets:3, reps:'15-20', note:'Corde, prise neutre → rotation externe en fin'},
+    {name:'Curl incliné haltères',         sets:4, reps:'10-12', note:'Prise supination. Étirement max. Dernière série : partiels'},
+    {name:'Curl marteau corde',            sets:3, reps:'10-12', note:'Prise neutre (paumes face à face) → brachial'}
+  ],
+  Legs: [
+    {name:'Pendulum squat',                sets:4, reps:'6-10',  note:'Composé. Amplitude complète, descends bien'},
+    {name:'Leg press 45°',                 sets:3, reps:'10-15', note:'Gros étirement en bas'},
+    {name:'Leg extension',                 sets:4, reps:'10-15', note:'Contraction en haut'},
+    {name:'Leg curl assis',                sets:4, reps:'8-12',  note:'Assis = ischio en étirement → optimal hypertrophie'},
+    {name:'Back extension focus ischios',  sets:3, reps:'12-15', note:''},
+    {name:'Mollet leg press (gastroc)',    sets:4, reps:'8-12',  note:'Lourd. Pause 1-2 s en bas, aucun rebond'},
+    {name:'Mollet assis (soléaire)',       sets:4, reps:'15-20', note:'Reps hautes (soléaire). Amplitude complète'}
+  ],
+  Upper: [
+    {name:'Incline Chest Press M-Torture', sets:4, reps:'6-8',   note:'Prise neutre. Haut de pec'},
+    {name:'Wide Pulldown Rear',            sets:4, reps:'6-10',  note:'Prise large pronation (largeur)'},
+    {name:'Rowing unilatéral Hammer iso',  sets:3, reps:'8-10',  note:'Prise neutre, un bras à la fois. Grande amplitude'},
+    {name:'Shoulder Press M-Torture',      sets:3, reps:'6-10',  note:'Prise neutre. Composé'},
+    {name:'Élévation latérale Gymleco',    sets:4, reps:'15-20', note:'Priorité. Version stricte. Dernière série jusqu’à l’échec'},
+    {name:'Reverse pec-deck',              sets:3, reps:'15-20', note:'Prise neutre/pronation. Mène avec les coudes'},
+    {name:'Overhead triceps',              sets:3, reps:'10-12', note:'Prise neutre (corde). Bras derrière la tête'},
+    {name:'Curl incliné',                  sets:3, reps:'10-12', note:'Prise supination. Étirement biceps'}
+  ],
+  Bras: [
+    {name:'Élévation latérale Gymleco',    sets:4, reps:'15-20', note:'Superset avec Curl corde'},
+    {name:'Curl corde',                    sets:4, reps:'10-12', note:'Prise neutre/supination. Superset'},
+    {name:'Face pull',                     sets:3, reps:'15-20', note:'Corde prise neutre. Superset avec Triceps overhead'},
+    {name:'Triceps overhead',              sets:3, reps:'10-12', note:'Corde prise neutre. Superset'},
+    {name:'Élévation latérale poulie',     sets:4, reps:'15-20', note:'Superset avec Bayesian curl'},
+    {name:'Bayesian curl',                 sets:4, reps:'10-12', note:'Prise supination, biceps étiré derrière le corps. Superset'},
+    {name:'Triceps pushdown',              sets:3, reps:'12-15', note:'Corde prise neutre. Superset avec Tibialis raise'},
+    {name:'Tibialis raise',                sets:3, reps:'20-25', note:'Superset'},
+    {name:'Mollet assis (soléaire)',       sets:4, reps:'15-20', note:'3e fréquence mollets'}
+  ],
+  Abdos: [
+    {name:'Levée de jambe suspendu',       sets:4, reps:'10-15', note:'Bas des abdos — enroule le bassin vers le haut'},
+    {name:'Crunch inversé',                sets:4, reps:'10-15', note:'Bas des abdos (version allongée)'},
+    {name:'Crunch câble lesté',            sets:4, reps:'12-15', note:'Haut des abdos, lesté = épaissit le six-pack'}
+  ]
+};
+
+/* ===== PROGRAMMES FULL BODY (séance A / B — au choix) ===== */
+const FULL_PROGRAMS = {
+  A: { label:'Séance A — fessiers + quadris', exos:[
+    {name:'Hip thrust machine',                sets:3, reps:'10-12', note:'Meilleur exo fessiers. Monte le bassin, serre fort les fessiers 1 s en haut'},
+    {name:'Hack squat',                        sets:3, reps:'10-12', note:'Cuisses + fessiers. Descends bien (parallèle), pousse dans les talons'},
+    {name:'Machine abducteurs',                sets:3, reps:'15',    note:'Fessier moyen = galbe et rondeur du haut de la fesse'},
+    {name:'Leg curl assis',                    sets:3, reps:'12-15', note:'Arrière des cuisses. Buste légèrement penché = meilleur étirement'},
+    {name:'Développé poitrine machine',        sets:2, reps:'12',    note:'Haut du corps léger. Dossier droit, pousse droit devant (horizontal, pas incliné ni vertical)'},
+    {name:'Rowing assis (seated row)',         sets:2, reps:'12',    note:'Posture : tire les coudes en arrière, redresse le dos'},
+    {name:'Relevé de jambes + planche',        sets:3, reps:'12',    note:'Abdos bas + gainage (planche 20-30 s)'}
+  ]},
+  B: { label:'Séance B — jambes + ischios', exos:[
+    {name:'Presse à cuisses',                  sets:3, reps:'12-15', note:'Cuisses/fessiers. Pieds un peu hauts = + fessiers. Ne bloque pas les genoux en haut'},
+    {name:'Leg curl assis',                    sets:3, reps:'12-15', note:'Arrière des cuisses (ischios). Remplace le soulevé de terre, plus simple et sûr'},
+    {name:'Machine abducteurs',                sets:3, reps:'15',    note:'Galbe de la hanche'},
+    {name:'Extension mollets',                 sets:3, reps:'15',    note:'Mollets — utile pour des jambes fines'},
+    {name:'Développé militaire machine',       sets:2, reps:'12-15', note:'Épaules léger + posture (on reste léger, pas de largeur)'},
+    {name:'Crunch câble (ou au sol)',          sets:3, reps:'15',    note:'Haut des abdos'},
+    {name:'Dead bug',                          sets:2, reps:'10',    note:'Allongée, bras/jambes opposés. Gainage profond = ventre plat (10 / côté)'}
+  ]}
+};
+
+/* ===== ÉCHAUFFEMENTS (pense-bête pliable) ===== */
+const WARMUPS = {
+  full: { title:'Échauffement — Full body', items:[
+    'Cardio léger (vélo / tapis / elliptique) — 5 min',
+    'Squats poids de corps — 15',
+    'Back extension machine (poids de corps) — 15 (active fessiers + arrière cuisses)',
+    'Fentes marchées — 8 / jambe',
+    'Cercles de bras + rotations épaules — 10 de chaque'
+  ]},
+  haut: { title:'Échauffement — Haut du corps', items:[
+    'Cardio léger (rameur / vélo) — 3-5 min',
+    'Cercles de bras — 10 avant + 10 arrière',
+    'Band pull-apart (élastique) — 2 × 15-20',
+    'Rotation externe coiffe (élastique) — 2 × 15 / bras, très léger',
+    'Dislocations épaule (bâton / élastique) — 1 × 10',
+    'Séries d’approche du 1er exo — 1-2 séries (~50 % puis ~70 %)'
+  ]},
+  bas: { title:'Échauffement — Bas du corps', items:[
+    'Cardio léger (vélo) — 5 min',
+    'Balancers de jambe — 10/côté av-ar + 10/côté latéraux',
+    'Mobilité cheville (dorsiflexion) — 10/côté',
+    'Fentes marchées / world’s greatest stretch — 5/côté',
+    'Air squats — 1 × 15',
+    'Séries d’approche (Pendulum squat) — 2-3 montantes (~40 → 60 → 75 %)'
+  ]}
+};
+const WARMUP_FOR = { Push:'haut', Pull:'haut', Upper:'haut', Bras:'haut', Legs:'bas', Full:'full' };
+
+/* ===== LEXIQUE / GUIDE TECHNIQUE (description + prises par exercice) ===== */
+const GUIDE = [
+  { group:'Pec — haut de pec (priorité)', items:[
+    {name:'Développé incliné Arsenal ISO / Incline Chest Press M-Torture', tags:'Push · Upper', desc:
+`Réglage : siège réglé pour que les poignées arrivent au niveau du haut de la poitrine / bas des clavicules (pas au menton = trop haut = épaule ; pas aux tétons = trop bas = pec moyen). Dos et fesses collés, léger cambré naturel.
+Amplitude : descends jusqu'à un bon étirement du pec (poignées au niveau de la poitrine), pousse jusqu'à presque tendre sans verrouiller les coudes.
+Sensation : pousse avec la poitrine, rapproche légèrement les coudes vers l'intérieur en poussant. Serre le pec en haut.
+Erreur : ne laisse pas les épaules s'enrouler vers l'avant — garde-les basses et en arrière. Ne pousse pas avec les épaules.`},
+    {name:'Incline Fly Arsenal', tags:'Push', desc:
+`Réglage : même repère de siège que le développé incliné. Poignées alignées avec le milieu/haut de pec.
+Amplitude : ouvre jusqu'à un grand étirement du pec (sans douleur d'épaule), reviens en serrant jusqu'à ce que les poignées se rapprochent devant la poitrine.
+Sensation : garde un léger pli de coude fixe tout le long (mouvement d'ouverture, pas de poussée). Pause 1 s en étirement.
+Erreur : ne plie/tends pas les coudes pendant le mouvement (ça devient un développé). Ne descends pas si l'épaule tire.`},
+    {name:'Pec deck / butterfly', tags:'Push · isolation ⭐', desc:
+`Réglage : dos et fesses collés, poignées à hauteur de poitrine. Siège un cran plus bas que d'habitude pour que les bras montent légèrement en se rejoignant (biais haut de pec). Coudes légèrement fléchis, à hauteur d'épaule.
+Amplitude : ouvre jusqu'à l'étirement du pec (sans forcer l'épaule), ramène jusqu'à ce que les poignées se rejoignent devant.
+Sensation : pousse avec les coudes / l'arrière des bras, pas les mains. Serre fort le pec au centre (pause 1 s).
+Erreur : ouvrir trop loin (stress épaule), utiliser l'élan, relâcher d'un coup au retour.`},
+    {name:'Écarté câble bas-vers-haut (low-to-high)', tags:'Push · alternative pec deck', desc:
+`Réglage : deux poulies réglées en bas. Une poignée dans chaque main, au milieu, un pied devant l'autre, léger buste penché.
+Amplitude : pars bras écartés en bas (étirement), monte les mains vers le haut et l'intérieur jusqu'à ce qu'elles se rejoignent devant le visage / haut de poitrine.
+Sensation : léger pli de coude fixe (écarté, pas poussée). "Monte et serre vers le haut" = cible le faisceau supérieur. Serre 1 s en fin de montée.
+Erreur : plier/tendre les coudes (→ triceps), monter les mains trop bas (→ pec moyen). Le trajet va vers le HAUT.`}
+  ]},
+  { group:'Épaules', items:[
+    {name:'Shoulder Press M-Torture', tags:'Push · Upper', desc:
+`Réglage : siège de façon à ce que les poignées partent au niveau des épaules/oreilles, pas plus bas (protège l'épaule). Dos appuyé.
+Amplitude : monte jusqu'à presque tendre sans verrouiller. En bas, descends au niveau des épaules — pas plus bas.
+Sensation : pousse "vers le plafond", garde les côtes basses (ne cambre pas trop). Deltoïde antérieur.
+Erreur : amplitude trop basse en bas = stress épaule inutile.`},
+    {name:'Élévation latérale poulie', tags:'Push · Bras · exo roi', desc:
+`Réglage : poulie en bas, de profil, câble devant toi, poignée dans la main opposée (câble à gauche → main droite).
+Amplitude : départ main devant la cuisse opposée (étirement), monte jusqu'à hauteur d'épaule (horizontale), pas plus haut.
+Sensation : mène avec le COUDE, pas la main. Léger basculement du petit doigt vers le haut en fin. Descente lente = phase clé.
+Erreur : monter trop haut (→ trapèzes), tirer avec la main, balancer le corps.`},
+    {name:'Élévation latérale Gymleco assis', tags:'Upper', desc:
+`Réglage : assis, dos calé, coussins contre le haut des bras (au-dessus du coude), pas sur les avant-bras. Épaules alignées avec l'axe de la machine.
+Amplitude : pars bras le long du corps (étirement), monte les coudes jusqu'à hauteur d'épaule.
+Sensation : pousse contre les coussins avec les COUDES, pas les mains. Strict, zéro élan.
+Erreur : monter au-dessus de l'horizontale, hausser les épaules (trapèzes).`},
+    {name:'Reverse pec-deck (rear delt)', tags:'Upper', desc:
+`Réglage : poitrine contre le dossier, poignées à hauteur d'épaule bras tendus devant. Prise neutre ou pronation.
+Amplitude : pars bras tendus devant (léger pli fixe), ouvre vers l'arrière jusqu'à hauteur d'épaules (ligne du corps), pas plus loin.
+Sensation : mène avec les coudes, pense "arrière de l'épaule", PAS "serrer les omoplates" (sinon c'est le dos). Poitrine collée.
+Erreur : trop serrer les omoplates = trapèzes/rhomboïdes à la place du rear delt.`},
+    {name:'Face pull', tags:'Pull · Bras', desc:
+`Réglage : poulie à hauteur de visage / légèrement au-dessus, corde. Recule pour avoir de la tension bras tendus.
+Amplitude : tire la corde vers le visage/front, mains qui s'écartent de part et d'autre de la tête, coudes hauts.
+Sensation : finis mains à côté des oreilles, rotation externe (pouces vers l'arrière). Arrière d'épaule + haut du dos.
+Erreur : tirer trop bas (vers la poitrine) ou avec les biceps. Garde les coudes hauts.`}
+  ]},
+  { group:'Dos', items:[
+    {name:'Wide Pulldown Rear M-Torture (largeur)', tags:'Pull · Upper', desc:
+`Réglage : cuisses bien bloquées sous les coussins. Assieds-toi bras tendus vers le haut pour étirer les lats.
+Amplitude : pars bras tendus en haut (étirement lats max), tire jusqu'à ce que les mains arrivent au haut de la poitrine, coudes vers les côtes.
+Sensation : initie en tirant les coudes vers le bas et l'arrière, pas en pliant les bras. "Coudes dans les poches arrière". Contraction 1 s en bas.
+Erreur : tirer avec les biceps, se pencher trop en arrière, ne pas étirer les bras en haut.`},
+    {name:'Rowing horizontal poitrine appuyée (épaisseur)', tags:'Pull', desc:
+`Machine : privilégie un rowing chest-supported à tirage HORIZONTAL (Hammer iso-lateral idéal). Évite le Gymleco D.Y. Row (angle haut = doublon avec le pulldown).
+Repère : installe-toi bras tendus. S'ils pointent droit devant (horizontal) et tu tires vers le ventre → ✅. S'ils pointent vers le haut et tu tires vers le bas → ❌ (doublon pulldown). La question : "je tire vers mon ventre ou vers le bas ?"
+Réglage : poitrine calée sur le pad, poignées à portée bras tendus. Pieds stables.
+Amplitude : pars bras tendus (étirement), tire jusqu'au bas de la poitrine/abdo, coudes vers l'arrière.
+Sensation : serre les omoplates en fin, tire avec les coudes. Milieu du dos.
+Erreur : décoller la poitrine du pad, tirer avec les bras seulement.`},
+    {name:'Rowing unilatéral poitrine appuyée', tags:'Upper', desc:
+`Idem rowing horizontal mais un bras à la fois → amplitude encore plus grande : étirement max en avant, contraction complète en arrière. Tronc stable, ne tourne pas les épaules.`},
+    {name:'Pull-over poulie (isolation lats)', tags:'Pull', desc:
+`Réglage : poulie en haut, corde ou barre. Debout légèrement penché, bras quasi tendus.
+Amplitude : pars bras tendus en haut devant (étirement lats), amène la corde vers les cuisses en gardant les bras quasi tendus (léger pli fixe).
+Sensation : mouvement qui vient de l'épaule/lats, pas des coudes. Sens les lats en bas. Isolation pure de largeur.
+Erreur : plier les coudes (→ triceps), trop lourd et perdre la sensation lats.`}
+  ]},
+  { group:'Biceps (courts → priorité étirement)', items:[
+    {name:'Curl incliné haltères (meilleur exo)', tags:'Pull', desc:
+`Réglage : banc incliné ~45-60°, dos calé, bras qui pendent librement en arrière du corps.
+Amplitude : laisse les bras pendre complètement (étirement max), monte sans avancer les coudes.
+Sensation : garde les coudes en arrière/fixes toute la montée = biceps en étirement (idéal insertions courtes). Pause 1 s en bas.
+Erreur : avancer les coudes (annule l'étirement), balancer.`},
+    {name:'Bayesian curl (poulie)', tags:'Bras', desc:
+`Réglage : poulie en bas, dos à la machine, avance d'un pas → le câble tire ton bras vers l'arrière = étirement.
+Amplitude/sensation : même logique que le curl incliné (bras derrière le corps = biceps étiré). Coude fixe en arrière, curl complet.
+Erreur : laisser le coude revenir vers l'avant.`},
+    {name:'Curl marteau corde (brachial)', tags:'Pull', desc:
+`Réglage : poulie basse, corde, prise neutre (paumes face à face).
+Amplitude : étire en bas, monte en gardant la prise marteau.
+Sensation : cible le brachial (sous le biceps) → épaissit et "pousse" le biceps vers le haut. Coudes fixes.
+Erreur : tourner les poignets, bouger les coudes.`},
+    {name:'Curl corde', tags:'Bras', desc:
+`Curl classique poulie basse, corde, supination. Coudes fixes le long du corps, contraction complète en haut, descente contrôlée.`}
+  ]},
+  { group:'Triceps', items:[
+    {name:'Overhead triceps corde (long chef)', tags:'Push · Upper · Bras', desc:
+`Réglage : poulie en haut (ou basse en te penchant) — objectif : bras au-dessus/derrière la tête pour étirer le long chef.
+Amplitude : laisse la corde descendre bien derrière la tête (étirement), tends les bras devant/en haut.
+Sensation : coudes fixes et hauts, seul l'avant-bras bouge. Bras vers l'oreille. L'étirement overhead = clé pour le volume.
+Erreur : coudes qui s'écartent/descendent, bouger tout le bras.`},
+    {name:'Triceps pushdown', tags:'Bras', desc:
+`Réglage : poulie en haut, corde ou barre. Coudes collés au corps.
+Amplitude : pars coudes à ~90°, tends complètement en bas, écarte légèrement la corde en fin.
+Sensation : coudes verrouillés le long du corps, seul l'avant-bras bouge. Contraction en bas.
+Erreur : avancer/écarter les coudes, se pencher pour pousser avec le poids du corps.`},
+    {name:'Dips machine (optionnel)', tags:'Push', desc:
+`Réglage : siège réglé pour poignées à hauteur du bas de poitrine. Buste droit pour cibler le triceps.
+Amplitude : descends jusqu'à ~90° de coude, remonte sans verrouiller.
+Sensation : buste droit + coudes près du corps = triceps. Léger penché avant = plus de bas de pec.
+Erreur : descendre trop bas si l'épaule tire.`}
+  ]},
+  { group:'Jambes', items:[
+    {name:'Pendulum squat', tags:'Legs', desc:
+`Réglage : pieds à plat, largeur épaules, dos et épaules calés. Pieds plus hauts = fessiers/ischios ; plus bas = quadris.
+Amplitude : descends cuisses parallèles ou en dessous (amplitude complète = plus de croissance), remonte sans verrouiller.
+Sensation : pousse dans tout le pied, genoux dans la ligne des orteils. Contrôle la descente.
+Erreur : demi-amplitude, talons qui décollent, genoux qui rentrent.`},
+    {name:'Leg press 45°', tags:'Legs', desc:
+`Réglage : pieds largeur épaules au milieu de la plateforme. Dos/fesses collés (ne pas décoller le bas du dos en bas).
+Amplitude : descends jusqu'à ~90° ou plus si le bas du dos reste collé (gros étirement quadris), pousse sans verrouiller.
+Sensation : pousse dans les talons, quadris. Descente contrôlée.
+Erreur : bas du dos qui s'enroule en bas, verrouiller les genoux en haut.`},
+    {name:'Leg extension', tags:'Legs', desc:
+`Réglage : axe du genou aligné avec l'axe machine. Coussin sur le bas du tibia.
+Amplitude : descends complètement (étirement quadris), monte jusqu'à extension quasi complète.
+Sensation : pause 1 s en haut (contraction max), descente lente. Orteils vers toi.
+Erreur : balancer, à-coups, amplitude partielle.`},
+    {name:'Leg curl assis (optimal ischios)', tags:'Legs', desc:
+`Réglage : genou aligné avec l'axe. Coussin des cuisses serré, coussin de cheville juste au-dessus du talon.
+Amplitude : pars jambes tendues (ischio étiré = position clé), fléchis complètement sous le siège.
+Sensation : pointe les orteils vers toi (dorsiflexion) pour isoler l'ischio, contraction en bas, retour lent.
+Erreur : décoller les fesses, à-coups, ne pas contrôler le retour.`},
+    {name:'Back extension focus ischios', tags:'Legs', desc:
+`Réglage : coussin au niveau du haut des cuisses/hanches (pas trop haut) pour bien fléchir la hanche.
+Amplitude : descends en pliant à la hanche (dos neutre), remonte jusqu'à alignement.
+Sensation : jambes quasi tendues, mouvement à la hanche, "pousse les hanches en avant". Arrondis un peu le haut du dos pour moins de lombaires.
+Erreur : faire le mouvement avec le bas du dos (hyperextension lombaire).`}
+  ]},
+  { group:'Mollets (courts → priorité, amplitude + pause étirement)', items:[
+    {name:'Mollet leg press — gastroc', tags:'Push · Legs', desc:
+`Réglage : pointes de pieds en bas de la plateforme, talons dans le vide. Jambes quasi tendues (léger déverrouillage, pas plié).
+Amplitude : talons qui descendent au maximum (gros étirement), monte sur la pointe le plus haut possible.
+Sensation : pause 1-2 s en bas (étirement) chaque rep, aucun rebond. Jambe tendue = gastroc.
+Erreur : amplitude courte, rebond, genoux pliés (→ perd le gastroc).`},
+    {name:'Mollet assis — soléaire', tags:'Legs · Bras', desc:
+`Réglage : coussin sur le bas des cuisses (genou ~90°), pointes sur le repose-pied, talons dans le vide.
+Amplitude : talons au max (étirement), montée complète sur la pointe.
+Sensation : genou plié = soléaire (profondeur/épaisseur). Pause en bas, reps hautes (15-20).
+Erreur : rebond, amplitude partielle.`},
+    {name:'Tibialis raise', tags:'Bras', desc:
+`Réglage : talons au sol, pointes libres (ou machine dédiée). Dos à un mur si au poids de corps.
+Amplitude : monte les pointes vers les tibias au max, redescends lentement.
+Sensation : avant du tibia qui brûle. Équilibre le mollet, protège le genou.
+Erreur : amplitude partielle, aller trop vite.`}
+  ]},
+  { group:'Abdos', items:[
+    {name:'Levée de jambe suspendu (bas des abdos)', tags:'Abdos', desc:
+`Réglage : suspendu à une barre (ou appuis coudes).
+Amplitude : monte les genoux/jambes en enroulant le bassin (le bas du dos s'arrondit), pas juste en levant les jambes.
+Sensation : "rapproche le pubis du sternum". L'enroulement du bassin fait bosser les abdos (sinon fléchisseurs de hanche).
+Erreur : balancer, lever les jambes sans enrouler le bassin.`},
+    {name:'Crunch inverse', tags:'Abdos', desc:
+`Réglage : allongé sur un banc/au sol, mains derrière la tête ou sur le banc.
+Amplitude : ramène les genoux vers la poitrine en décollant le bassin du banc.
+Sensation : enroule le bassin, contraction du bas des abdos, retour lent.
+Erreur : utiliser l'élan, ne pas décoller le bassin.`},
+    {name:'Crunch câble lesté', tags:'Abdos', desc:
+`Réglage : poulie en haut, corde. À genoux face à la machine, corde de part et d'autre de la nuque.
+Amplitude : enroule le buste vers le bas (sternum vers le bassin), colonne qui s'arrondit. Ce sont les abdos qui tirent, pas les bras.
+Sensation : hanches fixes, seul le haut du corps s'enroule. Contraction max en bas, retour lent en étirement.
+Erreur : tirer avec les bras/épaules, faire un mouvement de hanche au lieu d'enrouler la colonne.`}
+  ]},
+  { group:'Full body — débutante (fessiers · jambes · posture)', items:[
+    {name:'Les 3 règles d\'or (débutante)', tags:'à lire', desc:
+`1. La technique avant le poids, toujours. Un mouvement propre léger vaut mieux qu'un mouvement bâclé lourd.
+2. Respire : souffle quand tu forces (la partie dure), inspire quand tu reviens.
+3. Contrôle la descente : ne laisse jamais tomber le poids, descends en 2-3 secondes. C'est là que le muscle travaille le plus.`},
+    {name:'Hip thrust (machine ou barre)', tags:'Full · fessiers', desc:
+`Réglage : haut du dos / omoplates calés contre le dossier ou le banc. Coussin (ou barre) posé sur les hanches, pas sur le ventre. Pieds à plat, largeur épaules, assez avancés pour que les tibias soient verticaux en haut.
+Mouvement : pousse dans les talons pour monter les hanches jusqu'à une ligne droite épaules-hanches-genoux. Serre les fesses à fond, pause 1 s, redescends lentement.
+Où tu le sens : les fessiers, pas le bas du dos.
+Erreur : cambrer le bas du dos et monter trop haut. Rentre le menton, garde les côtes basses.
+💡 Astuce : imagine un billet serré entre tes fesses à ne pas lâcher en haut. "Menton vers le nombril" pour ne pas cambrer.`},
+    {name:'Hack squat', tags:'Full · cuisses + fessiers', desc:
+`Réglage : épaules sous les coussins, dos plaqué contre le dossier. Pieds largeur épaules, au milieu de la plateforme.
+Mouvement : déverrouille, descends lentement jusqu'à cuisses parallèles au sol (ou un peu plus bas), remonte en poussant dans les talons sans bloquer les genoux.
+Où tu le sens : avant des cuisses (quadriceps) + fessiers.
+Erreur : ne descendre qu'à moitié. Descends bien, c'est ce qui fait travailler la jambe entière.
+💡 Astuce : pieds plus hauts sur la plateforme = plus de fessiers ; plus bas = plus de cuisses.`},
+    {name:'Machine abducteurs (ouverture des jambes)', tags:'Full · fessiers', desc:
+`Réglage : assise, coussins contre l'extérieur des cuisses/genoux. Penche-toi légèrement en avant = cible mieux le haut de la fesse.
+Mouvement : écarte les genoux le plus loin possible, serre 1 s, reviens lentement en résistant (ne laisse pas claquer).
+Où tu le sens : côté / haut des fesses (fessier moyen).
+Erreur : aller trop vite et laisser la machine te ramener. Contrôle le retour, c'est la moitié du travail.
+💡 Astuce : "ouvre comme un papillon", lentement dans les deux sens. Penchée en avant = plus de fessier.`},
+    {name:'Leg curl assis (débutante)', tags:'Full · ischios', desc:
+`Réglage : genoux alignés avec l'axe de la machine. Coussin des cuisses serré, coussin de cheville juste au-dessus des talons.
+Mouvement : pars jambes tendues, ramène les talons vers les fesses, reviens lentement. Penche-toi un tout petit peu en avant = meilleur étirement.
+Où tu le sens : derrière les cuisses (ischios).
+Erreur : à-coups. Va doucement, surtout au retour.
+💡 Astuce : pointe les orteils vers tes tibias (pieds fléchis) pendant tout le mouvement, tu sentiras beaucoup mieux l'arrière des cuisses.`},
+    {name:'Presse à cuisses (leg press)', tags:'Full · cuisses + fessiers', desc:
+`Réglage : assise, dos et fesses bien plaqués contre le dossier. Pieds largeur épaules au milieu de la plateforme.
+Mouvement : descends la plateforme jusqu'à ~90° (ou plus si le bas du dos reste collé), pousse dans les talons sans bloquer les genoux.
+Où tu le sens : cuisses + fessiers.
+Erreur : descendre si bas que les fesses / le bas du dos décollent du siège. Descends juste jusqu'où ton dos reste collé.
+💡 Astuce : pieds plus hauts = plus de fessiers/arrière cuisses ; plus bas = plus d'avant des cuisses.`},
+    {name:'Extension mollets', tags:'Full · mollets', desc:
+`Réglage : pointes de pieds sur le bord d'une marche/plateforme, talons dans le vide.
+Mouvement : laisse les talons descendre bien bas (étirement), monte sur la pointe des pieds le plus haut possible, pause en haut.
+Où tu le sens : les mollets.
+💡 Astuce : amplitude complète, monte "sur des talons hauts imaginaires". Utile pour galber les jambes fines.`},
+    {name:'Développé poitrine machine (horizontal)', tags:'Full · poitrine', desc:
+`Quelle machine : la version horizontale (dossier droit, tu pousses droit devant toi à hauteur de poitrine). Pas l'inclinée ni la verticale. Poignées au milieu de la poitrine.
+Réglage : siège réglé pour que les poignées soient à hauteur du milieu de la poitrine. Dos plaqué contre le dossier.
+Mouvement : pousse les poignées devant toi jusqu'à presque tendre les bras (sans bloquer), reviens lentement en sentant l'étirement de la poitrine.
+Où tu le sens : la poitrine (pectoraux).
+Erreur : écarter les coudes tout en haut (mauvais pour l'épaule). Garde les coudes un peu rentrés.
+💡 Astuce : "pousse et serre la poitrine" comme pour rapprocher tes coudes devant toi.`},
+    {name:'Rowing assis (seated row)', tags:'Full · posture', desc:
+`Réglage : assise, pieds calés, poitrine contre l'appui si la machine en a un. Attrape les poignées bras tendus.
+Mouvement : tire les poignées vers ton ventre / bas de poitrine en ramenant les coudes vers l'arrière, serre les omoplates, reviens lentement.
+Où tu le sens : le milieu du dos (bon pour se tenir droite).
+Erreur : tirer avec les bras seulement en arrondissant le dos. Redresse-toi et pense aux coudes.
+💡 Astuce : imagine que tu serres une orange entre tes omoplates à chaque tirage.`},
+    {name:'Développé militaire machine (léger) / Face pull', tags:'Full · épaules · posture', desc:
+`Développé militaire machine : pousse les poignées au-dessus de ta tête. Siège réglé pour que les poignées soient au niveau des épaules au départ. Pousse sans bloquer les coudes, redescends au niveau des épaules (pas plus bas). Reste légère, on tonifie juste.
+Face pull (alternative, top posture) : poulie à hauteur du visage, corde. Tire vers ton front en écartant les mains, coudes hauts. Sens l'arrière des épaules et le haut du dos.
+💡 Astuce : le face pull corrige les épaules qui tombent en avant — parfait si elle est souvent sur son téléphone/ordi.`},
+    {name:'Relevé de jambes au sol', tags:'Full · abdos bas', desc:
+`Position : allongée sur le dos, mains à plat sous les fesses (soutient le bas du dos).
+Mouvement : monte les jambes tendues (ou genoux pliés si trop dur) vers le plafond en enroulant légèrement le bassin vers toi, redescends lentement sans creuser le bas du dos.
+💡 Astuce : le mouvement vient de "rentrer le nombril", pas juste de lever les jambes.`},
+    {name:'Planche (gainage)', tags:'Full · gainage', desc:
+`Position : sur les avant-bras (coudes sous les épaules) et la pointe des pieds, corps en ligne droite de la tête aux talons.
+Mouvement : tiens la position en serrant le ventre et les fesses. Ne laisse pas les hanches tomber ni se relever en pointe.
+💡 Astuce : "rentre le nombril vers la colonne" et serre comme si on allait te donner un coup de poing dans le ventre.`},
+    {name:'Crunch câble (ou au sol)', tags:'Full · abdos hauts', desc:
+`Réglage : poulie en haut, corde, à genoux face à la machine, corde de chaque côté de la tête.
+Mouvement : enroule le buste vers le bas (le sternum va vers le bassin), le dos s'arrondit. Ce sont les abdos qui tirent, pas les bras. Reviens lentement.
+Erreur : tirer avec les bras ou bouger les hanches. Seul le haut du corps s'enroule.
+💡 Astuce : imagine que tu veux te mettre en boule en rapprochant tes côtes de ton bassin.`},
+    {name:'Dead bug', tags:'Full · gainage profond', desc:
+`Position : allongée sur le dos, bras tendus vers le plafond, genoux pliés à 90° en l'air.
+Mouvement : descends lentement un bras et la jambe opposée vers le sol, sans les poser, reviens et change de côté. Garde le bas du dos collé au sol (très important).
+💡 Astuce : garde le bas du dos "écrasé" contre le sol ; s'il se creuse, descends moins loin.`}
+  ]}
+];
+/* Prise recommandée, rattachée à chaque exercice (clé = nom exact de l'exo dans GUIDE) */
+const PRISES = {
+  'Développé incliné Arsenal ISO / Incline Chest Press M-Torture':
+    `neutre (paumes face à face) → trajectoire naturelle, beaucoup plus douce pour l'épaule. Reco : neutre partout où possible (pronation = plus de stress épaule ; si imposée, garde les coudes pas trop écartés).`,
+  'Shoulder Press M-Torture':
+    `neutre (paumes face à face) → plus douce pour ton épaule sensible. Reco : neutre si dispo, sinon pronation coudes proches du corps.`,
+  'Wide Pulldown Rear M-Torture (largeur)':
+    `large pronation (paumes vers l'avant) → maximise la largeur et les lats hauts, c'est LA prise pour ton V-taper. Reco : large pronation (neutre = plus d'épaisseur + biceps).`,
+  'Rowing horizontal poitrine appuyée (épaisseur)':
+    `neutre (paumes face à face) → lats + milieu du dos, meilleure épaisseur et plus confortable pour l'épaule. Reco : neutre (large pronation = plus de haut du dos/arrière d'épaule).`,
+  'Rowing unilatéral poitrine appuyée':
+    `neutre → épaisseur + confort épaule. Reco : neutre.`,
+  'Face pull':
+    `corde, prise neutre au départ → rotation externe en fin (pouces vers l'arrière). Active à fond l'arrière d'épaule + les rotateurs (bon pour la santé d'épaule).`,
+  'Reverse pec-deck (rear delt)':
+    `neutre ou pronation → teste les deux et garde celle où tu sens le plus l'arrière d'épaule (pronation = un chouïa plus de rear delt).`,
+  'Curl incliné haltères (meilleur exo)':
+    `supination (paumes vers le haut) → recrutement max du biceps. Reco : supination.`,
+  'Bayesian curl (poulie)':
+    `supination → biceps étiré derrière le corps, ta priorité. Reco : supination.`,
+  'Curl marteau corde (brachial)':
+    `neutre / marteau (paumes face à face) → cible le brachial, épaissit le bras et pousse le biceps vers le haut. Reco : neutre.`,
+  'Curl corde':
+    `supination, coudes fixes le long du corps (neutre possible pour viser le brachial).`,
+  'Overhead triceps corde (long chef)':
+    `corde, prise neutre → permet d'écarter en fin = meilleure contraction, plus doux pour poignets/coudes. Reco : corde neutre.`,
+  'Triceps pushdown':
+    `corde, prise neutre → écarte en fin de mouvement = meilleure contraction, plus doux que la barre. Reco : corde neutre (barre pronation = plus lourd mais contraction moins complète + stress poignet).`
+};
+const GUIDE_RULE = `Règle générale : si tu ne sens pas le muscle cible, réduis le poids et ralentis la descente (2-3 s) avant d'ajouter de la charge. La sensation guide, surtout sur les isolations. Jamais de rebond, pause en position étirée.`;
 
 /* ============ CONFIGURATION CLOUD ============
    Pour activer la synchronisation entre appareils, colle ici l'URL et la clé
@@ -388,6 +814,33 @@ function showTab(name) {
   if (name==='weight') renderWeight();
   if (name==='progress') renderProgressTab();
   if (name==='log') renderLog();
+  if (name==='guide') renderGuide(document.getElementById('guideSearch').value);
+}
+function renderGuide(filter) {
+  const q = (filter||'').toLowerCase().trim();
+  const c = document.getElementById('guideContent');
+  let html = '';
+  const match = it => !q || it.name.toLowerCase().includes(q) || (it.tags||'').toLowerCase().includes(q)
+    || it.desc.toLowerCase().includes(q) || (PRISES[it.name]||'').toLowerCase().includes(q);
+  GUIDE.forEach(sec => {
+    const items = sec.items.filter(match);
+    if (!items.length) return;
+    html += `<h3 class="guide-group">${sec.group}</h3>`;
+    items.forEach(it => {
+      let body = it.desc.split('\n').map(l => {
+        const i = l.indexOf(' : ');
+        return i > -1 ? `<p><b>${l.slice(0,i)} :</b> ${l.slice(i+3)}</p>` : `<p>${l}</p>`;
+      }).join('');
+      if (PRISES[it.name]) body += `<p class="prise"><b>🖐 Prise :</b> ${PRISES[it.name]}</p>`;
+      html += `<details class="guide-item"${q?' open':''}>
+          <summary>${it.name}${it.tags?`<span class="gtag">${it.tags}</span>`:''}</summary>
+          <div class="guide-body">${body}</div>
+        </details>`;
+    });
+  });
+  html += `<p class="guide-rule">💡 ${GUIDE_RULE}</p>`;
+  c.innerHTML = q && !GUIDE.some(s => s.items.some(match))
+    ? '<div class="empty">Aucun exercice trouvé.</div>' : html;
 }
 
 /* ============ POIDS ============ */
@@ -421,8 +874,9 @@ function renderWeight() {
 
 /* ============ SÉANCE (création / modification) ============ */
 let curType = 'Push';
-let curExos = [];        // {name, sets:[{reps,weight}], note, difficulty}
+let curExos = [];        // {name, sets:[{reps,weight}], note, difficulty, repsTarget}
 let editingId = null;    // id de la séance en cours de modification (null = nouvelle séance)
+let sessionDirty = false; // true dès que l'utilisateur a touché la séance (empêche l'auto-remplissage d'écraser)
 
 function renderTypeSeg() {
   document.getElementById('typeSeg').innerHTML =
@@ -432,7 +886,10 @@ function pickType(t) {
   curType = t;
   document.querySelectorAll('#typeSeg button').forEach(b => b.classList.toggle('on', b.dataset.t===t));
   refreshExoPick();
-  renderRepeatBar();
+  renderWarmup();
+  // Nouvelle séance non modifiée → on pré-remplit avec le programme du type (rien pour Full)
+  if (editingId === null && !sessionDirty) loadProgram(curType, true);
+  renderActionBar();
   if (document.getElementById('exoManager').style.display !== 'none') renderManager();
 }
 // dernière séance enregistrée d'un type donné
@@ -440,19 +897,75 @@ function lastSessionOf(type) {
   for (let i = db.sessions.length-1; i>=0; i--) if (db.sessions[i].type === type) return db.sessions[i];
   return null;
 }
-function renderRepeatBar() {
+// échauffement pliable selon le type
+function renderWarmup() {
+  const box = document.getElementById('warmupBox');
+  const key = WARMUP_FOR[curType];
+  if (!key) { box.innerHTML = ''; return; }
+  const w = WARMUPS[key];
+  box.innerHTML = `<details class="warmup">
+      <summary>🔥 ${w.title} <span>déplier / replier</span></summary>
+      <ol>${w.items.map(it=>`<li>${it}</li>`).join('')}</ol>
+    </details>`;
+}
+// boutons "charger le programme" et "reprendre la dernière séance"
+function renderActionBar() {
   const bar = document.getElementById('repeatBar');
+  if (editingId !== null) { bar.innerHTML = ''; return; }
+  let html = '';
+  if (curType === 'Full') {                        // Full : deux séances au choix (A / B)
+    Object.keys(FULL_PROGRAMS).forEach(v => {
+      html += `<button class="act-btn prog" onclick="loadFullProgram('${v}')">
+        📋 ${FULL_PROGRAMS[v].label}<span>séance ${v}</span></button>`;
+    });
+  } else if (PROGRAMS[curType] && PROGRAMS[curType].length) {
+    html += `<button class="act-btn prog" onclick="loadProgram('${curType}')">
+      📋 Charger le programme ${curType}<span>séance par défaut</span></button>`;
+  }
   const last = lastSessionOf(curType);
-  if (editingId !== null || !last) { bar.innerHTML = ''; return; }
-  bar.innerHTML = `<button class="repeat-btn" onclick="loadLastSession()">
-      🔁 Reprendre la dernière séance ${curType}
-      <span>${last.exercises.length} exos · ${fmtDate(last.date)}</span>
-    </button>`;
+  if (last) html += `<button class="act-btn" onclick="loadLastSession()">
+      🔁 Reprendre la dernière séance ${curType}<span>${last.exercises.length} exos · ${fmtDate(last.date)}</span></button>`;
+  bar.innerHTML = html;
+}
+function loadFullProgram(v) {
+  const p = FULL_PROGRAMS[v];
+  if (!p) return;
+  if (curExos.length && sessionDirty && !confirm('Remplacer la séance en cours par la ' + p.label + ' ?')) return;
+  curExos = programToExos(p.exos);
+  sessionDirty = false;
+  renderExoBuilder();
+  renderActionBar();
+}
+// transforme une liste du PROGRAMS en exercices éditables (séries vides + objectif reps + note)
+function programToExos(list) {
+  return list.map(p => ({
+    name: p.name,
+    note: p.note || '',
+    difficulty: '',
+    repsTarget: p.reps || '',
+    sets: Array.from({length: p.sets}, () => ({ reps:'', weight:'' }))
+  }));
+}
+// charge la séance par défaut du type. auto=true : appel automatique (silencieux, pas de confirmation)
+function loadProgram(type, auto) {
+  const list = PROGRAMS[type];
+  if (!auto && (!list || !list.length)) return;
+  if (!auto && curExos.length && !confirm('Remplacer la séance en cours par le programme ' + type + ' ?')) return;
+  curExos = list ? programToExos(list) : [];
+  sessionDirty = false;               // c'est le défaut, pas encore une modif
+  renderExoBuilder();
+  renderActionBar();
+}
+// ajoute le bloc abdos du programme à la séance en cours
+function addAbsProgram() {
+  programToExos(PROGRAMS.Abdos).forEach(e => curExos.push(e));
+  sessionDirty = true;
+  renderExoBuilder();
 }
 function loadLastSession() {
   const last = lastSessionOf(curType);
   if (!last) return;
-  if (curExos.length && !confirm('Remplacer les exercices en cours par ceux de la dernière séance ' + curType + ' ?')) return;
+  if (curExos.length && sessionDirty && !confirm('Remplacer les exercices en cours par ceux de la dernière séance ' + curType + ' ?')) return;
   // copie indépendante : on reprend exos, charges, reps, difficulté et commentaires
   curExos = last.exercises.map(e => ({
     name: e.name,
@@ -460,6 +973,7 @@ function loadLastSession() {
     difficulty: e.difficulty || '',
     sets: e.sets.map(s => ({ reps: String(s.reps), weight: String(s.weight) }))
   }));
+  sessionDirty = true;
   renderExoBuilder();
 }
 function refreshExoPick() {
@@ -481,6 +995,7 @@ function addExoFromPick() {
     if (!exosFor(bucket).includes(name)) { db.customExos[bucket].push(name); save(); refreshExoPick(); }
   }
   curExos.push({ name, sets: [{reps:'', weight:''}], note: '', difficulty: '' });
+  sessionDirty = true;
   renderExoBuilder();
 }
 function toggleManager() {
@@ -513,11 +1028,11 @@ function removeExo(bucket, name) {
   else { db.hidden[bucket] = db.hidden[bucket] || []; if(!db.hidden[bucket].includes(name)) db.hidden[bucket].push(name); } // par défaut → masqué
   save(); refreshExoPick(); renderManager();
 }
-function addSet(i) { curExos[i].sets.push({reps:'',weight:''}); renderExoBuilder(); }
-function delSet(i,j) { curExos[i].sets.splice(j,1); if(!curExos[i].sets.length) curExos.splice(i,1); renderExoBuilder(); }
-function delExo(i) { curExos.splice(i,1); renderExoBuilder(); }
-function updSet(i,j,field,val) { curExos[i].sets[j][field] = val; }
-function updExo(i,field,val) { curExos[i][field] = val; }
+function addSet(i) { curExos[i].sets.push({reps:'',weight:''}); sessionDirty=true; renderExoBuilder(); }
+function delSet(i,j) { curExos[i].sets.splice(j,1); if(!curExos[i].sets.length) curExos.splice(i,1); sessionDirty=true; renderExoBuilder(); }
+function delExo(i) { curExos.splice(i,1); sessionDirty=true; renderExoBuilder(); }
+function updSet(i,j,field,val) { curExos[i].sets[j][field] = val; sessionDirty=true; }
+function updExo(i,field,val) { curExos[i][field] = val; sessionDirty=true; }
 // dernier commentaire + difficulté enregistrés pour cet exercice
 function lastExoData(name) {
   for (let k = db.sessions.length-1; k>=0; k--) {
@@ -534,15 +1049,16 @@ function renderExoBuilder() {
     const last = lastExoData(ex.name);
     const hint = last ? `<div class="last-hint">⏮ Dernière fois (${fmtDate(last.date)}) :
         ${last.difficulty?`<b>diff. ${last.difficulty}/10</b>`:''}${last.difficulty&&last.note?' · ':''}${last.note?'« '+last.note+' »':''}</div>` : '';
+    const target = ex.repsTarget ? `<div class="target-hint">🎯 Objectif : <b>${ex.repsTarget} reps</b> / série</div>` : '';
     return `
     <div class="exo-block">
       <div class="flex-between"><h3>${ex.name}</h3>
         <button class="danger small" onclick="delExo(${i})">Suppr.</button></div>
-      ${hint}
+      ${target}${hint}
       ${ex.sets.map((s,j)=>`
         <div class="set-line">
           <span class="idx">${j+1}</span>
-          <input type="number" placeholder="reps" value="${s.reps}" oninput="updSet(${i},${j},'reps',this.value)" style="width:70px">
+          <input type="number" placeholder="${ex.repsTarget||'reps'}" value="${s.reps}" oninput="updSet(${i},${j},'reps',this.value)" style="width:70px">
           <span class="muted">×</span>
           <input type="number" placeholder="kg" step="0.5" value="${s.weight}" oninput="updSet(${i},${j},'weight',this.value)" style="width:80px">
           <span class="muted">kg</span>
@@ -559,6 +1075,7 @@ function renderExoBuilder() {
     </div>`;}).join('');
 }
 function setDiff(i,n) {
+  sessionDirty = true;
   curExos[i].difficulty = (curExos[i].difficulty==n) ? '' : n; // re-cliquer désélectionne
   document.getElementById('diffVal'+i).textContent = curExos[i].difficulty ? curExos[i].difficulty+'/10' : '—';
   document.querySelectorAll('.exo-block')[i].querySelectorAll('.diff-dot').forEach(b=>
@@ -605,12 +1122,12 @@ function setEditUI(isEdit) {
 }
 function newSession() {
   editingId = null;
+  sessionDirty = false;       // repart d'une base "défaut" → l'auto-remplissage peut agir
   document.getElementById('sDate').value = today();
   document.getElementById('sessionMsg').textContent = '';
   curExos = [];
   setEditUI(false);
-  pickType(curType);          // garde le type courant, ré-affiche la barre "reprendre"
-  renderExoBuilder();
+  pickType(curType);          // pré-remplit le programme du type courant + échauffement
 }
 // bouton "Séance" du menu : sort proprement du mode modification si besoin
 function gotoSessionTab() {
